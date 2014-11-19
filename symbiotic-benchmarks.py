@@ -26,6 +26,8 @@
 import sys
 import subprocess
 import select
+import fcntl
+import os
 
 BUFSIZE = 4096
 
@@ -42,6 +44,8 @@ class RunningBenchmark(object):
         self.proc = proc
         self.task = task
 
+    def readOutput(self):
+        return self.proc.stdout.read()
 
 class Task(object):
     """ Class representing a task running on a remote computer """
@@ -72,9 +76,6 @@ class Task(object):
     def get_parallel(self):
         return self._parallel_no
 
-    def can_run(self):
-        return self._benchmarks != []
-
     def runBenchmark(self):
         """
         Run one test.
@@ -91,7 +92,7 @@ class Task(object):
         bench = self._benchmarks.pop()
 
         # this command will run on the remote machine
-        cmd = 'for I in `seq 1 10`; do echo $I {}; sleep 1; done'.format(bench)
+        cmd = '{}'.format(bench)
 
         p = subprocess.Popen(cmd, BUFSIZE, shell = True,
                              stdout = subprocess.PIPE,
@@ -112,6 +113,9 @@ class Dispatcher(object):
         self._tasks.append(task)
 
     def _registerFd(self, fd, data):
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
         self._fds[fd] = data
         self._poller.register(fd, select.POLLIN |
                               select.POLLERR | select.POLLHUP)
@@ -169,14 +173,18 @@ class Dispatcher(object):
 
                 if flags & select.POLLIN:
                     bench = self._getBenchmark(fd)
-                    data = bench.proc.stdout.readline()
-                    print('[{}] {}'.format(bench.task._machine, data))
+                    try:
+                        data = bench.readOutput()
+                        while data:
+                            print('[{}]'.format(bench.task._machine))
+                            print('{}'.format(data))
+                            data = bench.readOutput()
+                    except IOError:
+                        continue
 
                 if flags & select.POLLHUP:
                     # remove the old benchmark
                     bench = self._unregisterFd(fd)
-                    if bench.proc.poll():
-                        print('Process exited')
                     # run new benchmark
                     self._runBenchmark(bench.task)
 
