@@ -79,10 +79,10 @@ class Task(object):
 
     def dump(self):
         """ Print task in human readable form """
-        print("Task on {} (parallely {})".format(self._machine,
-                                                 self._parallel_no))
+        print("Task on {0} (parallely {1})".format(self._machine,
+                                                   self._parallel_no))
         for t in self._benchmarks:
-            print("\t -> {}".format(t))
+            print("\t -> {0}".format(t))
 
     def getParallel(self):
         return self._parallel_no
@@ -106,11 +106,11 @@ class Task(object):
         name, cat = self._benchmarks.pop()
 
         # this command will run on the remote machine
-        sshcmd = 'ssh {}'.format(self._machine)
+        sshcmd = 'ssh {0}'.format(self._machine)
         script = '~/symbiotic-benchmarks/symbiotic'
-        cmd = '{} \'{} --version {}\''.format(sshcmd, script, name)
+        cmd = '{0} \'{1} --version {2}\''.format(sshcmd, script, name)
 
-        print('[local] Running {}:{}'.format(self._machine, name))
+        print('[local] Running {0}:{1}'.format(self._machine, name))
         p = subprocess.Popen(cmd, BUFSIZE, shell = True,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.STDOUT)
@@ -144,7 +144,7 @@ class StdoutReporter(BenchmarkReport):
         mach = rb.task.getMachine()
         name = rb.name
 
-        sys.stdout.write('[{}:{}] '.format(mach, os.path.basename(name)))
+        sys.stdout.write('[{0}:{1}] '.format(mach, os.path.basename(name)))
         print(msg.rstrip())
         sys.stdout.flush()
 
@@ -264,7 +264,7 @@ def get_machines_from_file(path):
     try:
         f = open(path, 'r')
     except IOError as e:
-        err("Failed opening file with machines: {}".format(e.strerror))
+        err("Failed opening file with machines: {0}".format(e.strerror))
 
     parallel = 1
     tasks = []
@@ -280,7 +280,7 @@ def get_machines_from_file(path):
         l = len(vals)
 
         if l < 1 or l > 2:
-            err('Wrong syntax of tasks file on line {}'.format(position))
+            err('Wrong syntax of tasks file on line {0}'.format(position))
         elif l == 2:
             parallel = int(vals[1])
 
@@ -299,7 +299,7 @@ def assign_set(dirpath, path, tasks):
     try:
         f = open(relpath, 'r')
     except OSError as e:
-        err("Failed opening set of benchmarks ({}): {}"
+        err("Failed opening set of benchmarks ({0}): {1}"
             .format(relpath, e.strerror))
 
     num = len(tasks)
@@ -312,8 +312,9 @@ def assign_set(dirpath, path, tasks):
         if not line:
             continue
 
+        print(dirpath)
         # this is shell path, we need to expand it
-        item = '{}/{}'.format(dirpath, line).strip()
+        item = '{0}/{1}'.format(dirpath, line).strip()
 
         n = 0
         for it in glob.iglob(item):
@@ -326,7 +327,7 @@ def parse_sets(dirpath, tasks):
     try:
         files = os.listdir(dirpath)
     except OSError as e:
-        err('Failed opening dir with benchmarks ({}): {}'
+        err('Failed opening dir with benchmarks ({0}): {1}'
             .format(dirpath, e.strerror))
 
     for f in files:
@@ -346,7 +347,7 @@ def create_lockfile():
         if e.errno == errno.EEXIST:
             return False
         else:
-            err('Failed taking lock: {}'.format(e.strerror))
+            err('Failed taking lock: {0}'.format(e.strerror))
 
     os.write(fd, time.ctime())
     os.close(fd)
