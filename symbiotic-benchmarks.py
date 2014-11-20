@@ -33,6 +33,7 @@ import fcntl
 import os
 import time
 import errno
+import glob
 
 BUFSIZE = 1024
 
@@ -42,13 +43,14 @@ def err(msg):
 
 class RunningBenchmark(object):
     """ This class represents ont running task """
-    def __init__(self, cmd, proc, task, name):
+    def __init__(self, cmd, proc, task, name, cat):
         # these are public, this is just a record in
         # a dictioary
         self.cmd = cmd
         self.proc = proc
         self.task = task
         self.name = name
+        self.category = cat
 
     def readOutput(self):
         return self.proc.stdout.readline()
@@ -101,16 +103,19 @@ class Task(object):
         if not self._benchmarks:
             return None
 
-        bench = self._benchmarks.pop()
+        name, cat = self._benchmarks.pop()
 
         # this command will run on the remote machine
-        cmd = '{}'.format(bench)
+        sshcmd = 'ssh {}'.format(self._machine)
+        script = '~/symbiotic-benchmarks/symbiotic'
+        cmd = '{} \'{} --version {}\''.format(sshcmd, script, name)
 
+        print('[local] Running {}:{}'.format(self._machine, name))
         p = subprocess.Popen(cmd, BUFSIZE, shell = True,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.STDOUT)
 
-        return RunningBenchmark(cmd, p, self, bench)
+        return RunningBenchmark(cmd, p, self, name, cat)
 
 class BenchmarkReport(object):
     """ Report results of benchmark. This is a abstract class """
@@ -139,15 +144,15 @@ class StdoutReporter(BenchmarkReport):
         mach = rb.task.getMachine()
         name = rb.name
 
-        sys.stdout.write('[{}:{}] '.format(mach, name))
+        sys.stdout.write('[{}:{}] '.format(mach, os.path.basename(name)))
         print(msg.rstrip())
         sys.stdout.flush()
 
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """
 
-    def __init__(self):
-        self._tasks = []
+    def __init__(self, tasks = []):
+        self._tasks = tasks
         self._poller = select.poll()
         self._fds = dict()
         self._report = StdoutReporter()
@@ -255,58 +260,76 @@ class Dispatcher(object):
             self._killTasks()
             print('Stopping...')
 
-def parse_tasks_file(path):
+def get_machines_from_file(path):
     try:
         f = open(path, 'r')
     except IOError as e:
-        err("Failed opening file with tasks: {}".format(e.strerror))
+        err("Failed opening file with machines: {}".format(e.strerror))
 
-    d = Dispatcher()
-
-    paralel = 1
-    machine = ""
-    task = None
-    line = f.readline()
+    parallel = 1
+    tasks = []
     position = 1
 
-    while line:
-        stripped_line = line.strip()
-
-        # empty line
-        if not stripped_line:
-            line = f.readline()
+    for line in f:
+        line = line.strip()
+        if not line:
             continue
 
-        # machine and paralelism
-        if not line[0].isspace():
-            # parse machine and number of parallel processes
-            vals = line.split()
-            l = len(vals)
+        # parse machine and number of parallel processes
+        vals = line.split()
+        l = len(vals)
 
-            if l < 1 or l > 2:
-                err('Wrong syntax of tasks file on line {}'.format(position))
-            elif l == 2:
-                paralel = int(vals[1])
+        if l < 1 or l > 2:
+            err('Wrong syntax of tasks file on line {}'.format(position))
+        elif l == 2:
+            parallel = int(vals[1])
 
-            machine = vals[0]
+        machine = vals[0]
 
-            # add new task
-            task = Task(machine, paralel)
-            d.add(task)
-        else:
-            # this can happen only on line 1
-            if task is None:
-                err('Missing machine name on line {}'.format(position))
+        # add new task
+        tasks.append(Task(machine, parallel))
 
-            task.add(stripped_line)
-
+        parallel = 1
         position = position + 1
-        paralel = 1
-        line = f.readline()
+
+    return tasks
+
+def assign_set(dirpath, path, tasks):
+    relpath = os.path.join(dirpath, path)
+    try:
+        f = open(relpath, 'r')
+    except OSError as e:
+        err("Failed opening set of benchmarks ({}): {}"
+            .format(relpath, e.strerror))
+
+    num = len(tasks)
+    assert num > 0
+
+    cat = path[:-4]
+
+    for line in f:
+        # this is shell path, we need to expand it
+        item = '{}/{}'.format(dirpath, line).strip()
+
+        n = 0
+        for it in glob.iglob(item):
+            tasks[n % num].add((it, cat))
+            n +=1
 
     f.close()
 
-    return d
+def parse_sets(dirpath, tasks):
+    try:
+        files = os.listdir(dirpath)
+    except OSError as e:
+        err('Failed opening dir with benchmarks ({}): {}'
+            .format(dirpath, e.strerror))
+
+    for f in files:
+        if f[-4:] != '.set':
+            continue
+
+        assign_set(dirpath, f, tasks)
 
 def usage():
     sys.stderr.write("Usage: symbiotic-benchmarks tasks_file.txt\n")
@@ -330,15 +353,17 @@ def remove_lockfile():
     os.unlink(LOCKFILE)
 
 if __name__ == "__main__":
-    if not create_lockfile():
-        err('Another instance of benchmarks is running')
+    #if not create_lockfile():
+    #    err('Another instance of benchmarks is running')
 
-    if len(sys.argv) == 2:
-        dispatcher = parse_tasks_file(sys.argv[1])
+    if len(sys.argv) == 3:
+        tasks = get_machines_from_file(sys.argv[1])
+        parse_sets(sys.argv[2], tasks)
+        dispatcher = Dispatcher(tasks)
     else:
         usage()
         sys.exit(1)
 
     dispatcher.run()
 
-    remove_lockfile()
+    # remove_lockfile()
