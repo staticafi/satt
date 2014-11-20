@@ -361,7 +361,8 @@ def rsync_symbiotic(tasks, path):
     print('[local] rsync Symbiotic ({0})'.format(path))
 
     for t in tasks:
-        subprocess.call(['rsync', '-rz', '--progress' , path, t.getMachine()])
+        subprocess.call(['rsync', '-rz', '--progress' , path,
+                        'statica@{0}:symbiotic/'.format(t.getMachine())])
 
 def rsync_symbiotic_benchmarks(tasks):
     print('[local] rsync symbiotic-benchmarks')
