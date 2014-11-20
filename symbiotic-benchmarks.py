@@ -168,22 +168,19 @@ class Dispatcher(object):
     def _poll_wait(self):
         return self._poller.poll()
 
-    def run(self):
-        """ Dispatch tasks over network and wait for outcomes """
+    def _killTasks(self):
+        for bench in self._fds.values():
+            bench.proc.terminate()
+            # for sure
+            bench.proc.kill()
 
-        # take every task and call as many of benchmarks as
-        # you are allowed. Later, when a task ends,
-        # we will spawn only one new (one new for one done)
-        for task in self._tasks:
-            for n in range(0, task.getParallel()):
-                if self._runBenchmark(task) is None:
-                    break
+    def _monitorTasks(self):
+        assert self._is_running()
 
-        # monitor the tasks
         while self._is_running():
             for fd, flags in self._poll_wait():
                 if flags & select.POLLERR:
-                    ### XXX kill all the benchmarks
+                    self._killTasks()
                     err('Waiting for benchmark failed')
 
                 if flags & select.POLLIN:
@@ -206,6 +203,23 @@ class Dispatcher(object):
                     # run new benchmark
                     self._runBenchmark(bench.task)
 
+    def run(self):
+        """ Dispatch tasks over network and wait for outcomes """
+
+        # take every task and call as many of benchmarks as
+        # you are allowed. Later, when a task ends,
+        # we will spawn only one new (one new for one done)
+        for task in self._tasks:
+            for n in range(0, task.getParallel()):
+                if self._runBenchmark(task) is None:
+                    break
+
+        # monitor the tasks
+        try:
+            self._monitorTasks()
+        except KeyboardInterrupt:
+            self._killTasks()
+            print('Stopping...')
 
 def parse_tasks_file(path):
     try:
