@@ -358,10 +358,14 @@ def create_lockfile():
     return True
 
 def rsync_symbiotic(tasks, path):
+    print('[local] rsync Symbiotic ({0})'.format(path))
+
     for t in tasks:
-        subprocess.call(['rsync', '-rRz', '--progress' , path, t.getMachine()])
+        subprocess.call(['rsync', '-rz', '--progress' , path, t.getMachine()])
 
 def rsync_symbiotic_benchmarks(tasks):
+    print('[local] rsync symbiotic-benchmarks')
+
     for t in tasks:
         subprocess.call(['rsync', '-rRz', '--progress', './symbiotic',
                          '{0}:symbiotic-benchmarks/'
@@ -371,7 +375,7 @@ def do_sync(tasks):
     try:
         rsync_symbiotic_benchmarks(tasks)
         # XXX don't hardcode it
-        rsync_symbiotic(tasks, '../symbiotic')
+        rsync_symbiotic(tasks, os.path.expanduser('~/symbiotic/'))
     except KeyboardInterrupt:
         print('Stopping...')
         sys.exit(0)
@@ -389,4 +393,4 @@ if __name__ == "__main__":
         usage()
         sys.exit(1)
 
-    dispatcher.run()
+    #dispatcher.run()
