@@ -312,7 +312,6 @@ def assign_set(dirpath, path, tasks):
         if not line:
             continue
 
-        print(dirpath)
         # this is shell path, we need to expand it
         item = '{0}/{1}'.format(dirpath, line).strip()
 
