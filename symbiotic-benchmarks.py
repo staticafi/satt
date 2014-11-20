@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 #
 # This script distributes task between computers. The task
 # is to be run the Symbiotic tool on given benchark.
