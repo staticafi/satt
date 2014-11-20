@@ -332,7 +332,7 @@ def parse_sets(dirpath, tasks):
         assign_set(dirpath, f, tasks)
 
 def usage():
-    sys.stderr.write("Usage: symbiotic-benchmarks tasks_file.txt\n")
+    sys.stderr.write("Usage: symbiotic-benchmarks machines.txt sets_dir\n")
 
 LOCKFILE = '.symbiotic-benchmarks-running'
 def create_lockfile():
