@@ -40,12 +40,13 @@ def err(msg):
 
 class RunningBenchmark(object):
     """ This class represents ont running task """
-    def __init__(self, cmd, proc, task):
+    def __init__(self, cmd, proc, task, name):
         # these are public, this is just a record in
         # a dictioary
         self.cmd = cmd
         self.proc = proc
         self.task = task
+        self.name = name
 
     def readOutput(self):
         return self.proc.stdout.readline()
@@ -107,7 +108,38 @@ class Task(object):
                              stdout = subprocess.PIPE,
                              stderr = subprocess.STDOUT)
 
-        return RunningBenchmark(cmd, p, self)
+        return RunningBenchmark(cmd, p, self, bench)
+
+class BenchmarkReport(object):
+    """ Report results of benchmark. This is a abstract class """
+
+    def report(self, msg, rb):
+        """
+        Report what happens for one benchmark.
+
+        \param msg      one line of the output of the benchmark
+        \param rb       instance of RunningBenchmark
+        """
+
+        raise NotImplementedError("Child class needs to override this method")
+
+
+class StdoutReporter(BenchmarkReport):
+    """ Report results of benchmark to stdout """
+
+    def report(self, msg, rb):
+        """
+        Report what happens for one benchmark.
+
+        \param msg      one line of the output of the benchmark
+        \param rb       instance of RunningBenchmark
+        """
+        mach = rb.task.getMachine()
+        name = rb.name
+
+        sys.stdout.write('[{}:{}] '.format(mach, name))
+        print(msg.rstrip())
+        sys.stdout.flush()
 
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """
@@ -116,6 +148,7 @@ class Dispatcher(object):
         self._tasks = []
         self._poller = select.poll()
         self._fds = dict()
+        self._report = StdoutReporter()
 
     def add(self, task):
         """ Add new task """
@@ -188,8 +221,7 @@ class Dispatcher(object):
                     try:
                         data = bench.readOutput()
                         while data:
-                            print('[{}]'.format(bench.task.getMachine()))
-                            print('{}'.format(data))
+                            self._report.report(data, bench)
                             data = bench.readOutput()
                     # While can be too fast and raise
                     # EBUSY
