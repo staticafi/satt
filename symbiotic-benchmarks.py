@@ -31,6 +31,8 @@ import subprocess
 import select
 import fcntl
 import os
+import time
+import errno
 
 BUFSIZE = 1024
 
@@ -309,7 +311,28 @@ def parse_tasks_file(path):
 def usage():
     sys.stderr.write("Usage: symbiotic-benchmarks tasks_file.txt\n")
 
+LOCKFILE = '.symbiotic-benchmarks-running'
+def create_lockfile():
+    try:
+        fd = os.open(LOCKFILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except OSError as e:
+        if e.errno == errno.EEXIST:
+            return False
+        else:
+            err('Failed taking lock: {}'.format(e.strerror))
+
+    os.write(fd, time.ctime())
+    os.close(fd)
+
+    return True
+
+def remove_lockfile():
+    os.unlink(LOCKFILE)
+
 if __name__ == "__main__":
+    if not create_lockfile():
+        err('Another instance of benchmarks is running')
+
     if len(sys.argv) == 2:
         dispatcher = parse_tasks_file(sys.argv[1])
     else:
@@ -317,3 +340,5 @@ if __name__ == "__main__":
         sys.exit(1)
 
     dispatcher.run()
+
+    remove_lockfile()
