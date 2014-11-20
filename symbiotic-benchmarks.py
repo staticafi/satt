@@ -394,4 +394,4 @@ if __name__ == "__main__":
         usage()
         sys.exit(1)
 
-    #dispatcher.run()
+    dispatcher.run()
