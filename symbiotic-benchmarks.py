@@ -108,7 +108,7 @@ class Task(object):
         # this command will run on the remote machine
         sshcmd = 'ssh {0}'.format(self._machine)
         script = '~/symbiotic-benchmarks/symbiotic'
-        params = '--versions --use-dir= '
+        params = '--versions --use-dir= --symbiotic-dir=~/symbiotic'
         cmd = '{0} \'{1} {2} {3}\''.format(sshcmd, script, params, name)
 
         print('[local] Running {0}:{1}'.format(self._machine, name))
