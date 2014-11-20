@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 #
 # This script distributes task between computers. The task
 # is to be run the Symbiotic tool on given benchark.
@@ -22,6 +23,8 @@
 # DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 # TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
 # OF THIS SOFTWARE.
+#
+# On arran we have only python2, so use python2
 
 import sys
 import subprocess
@@ -29,7 +32,7 @@ import select
 import fcntl
 import os
 
-BUFSIZE = 4096
+BUFSIZE = 1024
 
 def err(msg):
     sys.stderr.write(msg + '\n')
@@ -45,17 +48,20 @@ class RunningBenchmark(object):
         self.task = task
 
     def readOutput(self):
-        return self.proc.stdout.read()
+        return self.proc.stdout.readline()
 
 class Task(object):
-    """ Class representing a task running on a remote computer """
+    """
+    Class representing a task running on a remote computer
+    The task is a set of benchmarks.
+    """
 
     def __init__(self, mach, parallel_no = 1):
         """
         Create a task
 
         \param comp     computer (used by ssh)
-        \paralel_no     number of tests that can ran
+        \paralel_no     number of tests that can run
                         parallely
         """
         self._machine = mach
@@ -73,12 +79,15 @@ class Task(object):
         for t in self._benchmarks:
             print("\t -> {}".format(t))
 
-    def get_parallel(self):
+    def getParallel(self):
         return self._parallel_no
+
+    def getMachine(self):
+        return self._machine
 
     def runBenchmark(self):
         """
-        Run one test.
+        Run one benchmark.
 
         This includes creating ssh connection to the remote machine
         and running one benchmark. It will remove the benchmark from
@@ -110,9 +119,12 @@ class Dispatcher(object):
 
     def add(self, task):
         """ Add new task """
+
         self._tasks.append(task)
 
     def _registerFd(self, fd, data):
+        """ Add new fd to the poller """
+
         flags = fcntl.fcntl(fd, fcntl.F_GETFL)
         fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
@@ -121,6 +133,8 @@ class Dispatcher(object):
                               select.POLLERR | select.POLLHUP)
 
     def _unregisterFd(self, fd):
+        """ Remove fd from the poller """
+
         bench = self._fds[fd]
 
         self._fds.pop(fd)
@@ -129,6 +143,8 @@ class Dispatcher(object):
         return bench
 
     def _registerBenchmark(self, bench):
+        """ Set running benchmark to be tracked down by poller """
+
         fd = bench.proc.stdout.fileno()
         self._registerFd(fd, bench)
 
@@ -159,14 +175,13 @@ class Dispatcher(object):
         # you are allowed. Later, when a task ends,
         # we will spawn only one new (one new for one done)
         for task in self._tasks:
-            for n in range(0, task.get_parallel()):
+            for n in range(0, task.getParallel()):
                 if self._runBenchmark(task) is None:
                     break
 
         # monitor the tasks
         while self._is_running():
             for fd, flags in self._poll_wait():
-                # is benchmark done?
                 if flags & select.POLLERR:
                     ### XXX kill all the benchmarks
                     err('Waiting for benchmark failed')
@@ -176,12 +191,15 @@ class Dispatcher(object):
                     try:
                         data = bench.readOutput()
                         while data:
-                            print('[{}]'.format(bench.task._machine))
+                            print('[{}]'.format(bench.task.getMachine()))
                             print('{}'.format(data))
                             data = bench.readOutput()
+                    # While can be too fast and raise
+                    # EBUSY
                     except IOError:
                         continue
 
+                # is benchmark done?
                 if flags & select.POLLHUP:
                     # remove the old benchmark
                     bench = self._unregisterFd(fd)
