@@ -248,13 +248,13 @@ class Dispatcher(object):
         # take every task and call as many of benchmarks as
         # you are allowed. Later, when a task ends,
         # we will spawn only one new (one new for one done)
-        for task in self._tasks:
-            for n in range(0, task.getParallel()):
-                if self._runBenchmark(task) is None:
-                    break
+        try:
+            for task in self._tasks:
+                for n in range(0, task.getParallel()):
+                    if self._runBenchmark(task) is None:
+                        break
 
         # monitor the tasks
-        try:
             self._monitorTasks()
         except KeyboardInterrupt:
             self._killTasks()
@@ -308,6 +308,10 @@ def assign_set(dirpath, path, tasks):
     cat = path[:-4]
 
     for line in f:
+        line = line.strip()
+        if not line:
+            continue
+
         # this is shell path, we need to expand it
         item = '{}/{}'.format(dirpath, line).strip()
 
@@ -353,8 +357,8 @@ def remove_lockfile():
     os.unlink(LOCKFILE)
 
 if __name__ == "__main__":
-    #if not create_lockfile():
-    #    err('Another instance of benchmarks is running')
+    if not create_lockfile():
+        err('Another instance of benchmarks is running')
 
     if len(sys.argv) == 3:
         tasks = get_machines_from_file(sys.argv[1])
@@ -366,4 +370,4 @@ if __name__ == "__main__":
 
     dispatcher.run()
 
-    # remove_lockfile()
+    remove_lockfile()
