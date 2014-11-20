@@ -34,6 +34,7 @@ import os
 import time
 import errno
 import glob
+import atexit
 
 BUFSIZE = 1024
 
@@ -352,10 +353,28 @@ def create_lockfile():
     os.write(fd, time.ctime())
     os.close(fd)
 
+    atexit.register(lambda: os.unlink(LOCKFILE))
+
     return True
 
-def remove_lockfile():
-    os.unlink(LOCKFILE)
+def rsync_symbiotic(tasks, path):
+    for t in tasks:
+        subprocess.call(['rsync', '-rRz', '--progress' , path, t.getMachine()])
+
+def rsync_symbiotic_benchmarks(tasks):
+    for t in tasks:
+        subprocess.call(['rsync', '-rRz', '--progress', './symbiotic',
+                         '{}:symbiotic-benchmarks/'
+                         .format(t.getMachine())])
+
+def do_sync(tasks):
+    try:
+        rsync_symbiotic_benchmarks(tasks)
+        # XXX don't hardcode it
+        rsync_symbiotic(tasks, '../symbiotic')
+    except KeyboardInterrupt:
+        print('Stopping...')
+        sys.exit(0)
 
 if __name__ == "__main__":
     if not create_lockfile():
@@ -363,6 +382,7 @@ if __name__ == "__main__":
 
     if len(sys.argv) == 3:
         tasks = get_machines_from_file(sys.argv[1])
+        do_sync(tasks)
         parse_sets(sys.argv[2], tasks)
         dispatcher = Dispatcher(tasks)
     else:
@@ -370,5 +390,3 @@ if __name__ == "__main__":
         sys.exit(1)
 
     dispatcher.run()
-
-    remove_lockfile()
