@@ -108,7 +108,8 @@ class Task(object):
         # this command will run on the remote machine
         sshcmd = 'ssh {0}'.format(self._machine)
         script = '~/symbiotic-benchmarks/symbiotic'
-        cmd = '{0} \'{1} --version {2}\''.format(sshcmd, script, name)
+        params = '--versions --use-dir= '
+        cmd = '{0} \'{1} {2} {3}\''.format(sshcmd, script, params, name)
 
         print('[local] Running {0}:{1}'.format(self._machine, name))
         p = subprocess.Popen(cmd, BUFSIZE, shell = True,
