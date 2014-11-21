@@ -115,7 +115,9 @@ class Task(object):
         ecmd = cmd.replace('{machine}', self._machine)
         ecmd = ecmd.replace('{benchmark}', name)
 
-        print('[local] Running task {0}:{1}'.format(self._machine, name))
+        print('[local] Running task {0}:{1}'.format(self._machine,
+                                                    os.path.basename(name)))
+        print ecmd
         p = subprocess.Popen(ecmd, BUFSIZE, shell = True,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.STDOUT)
@@ -311,12 +313,14 @@ def get_machines(configs):
     return tasks
 
 def assign_set(dirpath, path, tasks):
-    relpath = os.path.join(os.path.expanduser(dirpath), path)
+    home = os.path.expanduser('~')
+    epath = os.path.join(os.path.expanduser(dirpath), path)
+
     try:
-        f = open(relpath, 'r')
+        f = open(epath, 'r')
     except OSError as e:
         err("Failed opening set of benchmarks ({0}): {1}"
-            .format(relpath, e.strerror))
+            .format(epath, e.strerror))
 
     num = len(tasks)
     assert num > 0
@@ -328,12 +332,15 @@ def assign_set(dirpath, path, tasks):
         if not line:
             continue
 
-        # this is shell path, we need to expand it
+        # this is shell path with *, we need to expand it
+        # using glob
         item = '{0}/{1}'.format(dirpath, line).strip()
+        item = os.path.expanduser(os.path.normpath(item))
 
         n = 0
         for it in glob.iglob(item):
-            tasks[n % num].add((it, cat))
+            tasks[n % num].add(('~/{0}'
+                                .format(os.path.relpath(it, home)), cat))
             n +=1
 
     f.close()
@@ -440,7 +447,7 @@ def parse_configs(path = 'symbiotic-benchmarks.conf'):
             .format(path, e.strerror))
 
     allowed_keys = ['rsync-dir', 'rsync-remote-dir', 'benchmarks-dir',
-                    'machines', 'ssh-user', 'remote-cmd', 'sync']
+                    'machines', 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync']
 
     for line in f:
         line = line.strip()
