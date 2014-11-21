@@ -35,6 +35,7 @@ import time
 import errno
 import glob
 import atexit
+import getopt
 
 BUFSIZE = 1024
 
@@ -91,7 +92,7 @@ class Task(object):
     def getMachine(self):
         return self._machine
 
-    def runBenchmark(self):
+    def runBenchmark(self, cmd = 'echo "NO COMMAND GIVEN"'):
         """
         Run one benchmark.
 
@@ -106,14 +107,13 @@ class Task(object):
 
         name, cat = self._benchmarks.pop()
 
-        # this command will run on the remote machine
-        sshcmd = 'ssh {0}'.format(self._machine)
-        script = '~/symbiotic-benchmarks/symbiotic'
-        params = '--versions --use-dir= --symbiotic-dir=~/symbiotic'
-        cmd = '{0} \'{1} {2} {3}\''.format(sshcmd, script, params, name)
+        # if the command contains variables {machine} and {benchmark}
+        # expand them
+        ecmd = cmd.replace('{machine}', self._machine)
+        ecmd = ecmd.replace('{benchmark}', name)
 
-        print('[local] Running {0}:{1}'.format(self._machine, name))
-        p = subprocess.Popen(cmd, BUFSIZE, shell = True,
+        print('[local] Running task {0}:{1}'.format(self._machine, name))
+        p = subprocess.Popen(ecmd, BUFSIZE, shell = True,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.STDOUT)
 
@@ -153,11 +153,12 @@ class StdoutReporter(BenchmarkReport):
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """
 
-    def __init__(self, tasks = []):
+    def __init__(self, tasks = [], configs = dict()):
         self._tasks = tasks
         self._poller = select.poll()
         self._fds = dict()
         self._report = StdoutReporter()
+        self._configs = configs
 
     def add(self, task):
         """ Add new task """
@@ -190,10 +191,18 @@ class Dispatcher(object):
         fd = bench.proc.stdout.fileno()
         self._registerFd(fd, bench)
 
+    def _expandVars(self, cmd):
+        c = cmd[:]
+        for key, val in self._configs.items():
+            c = c.replace('{{{0}}}'.format(key), val)
+
+        return c
+
     def _runBenchmark(self, task):
         """ Run another benchmark from task """
 
-        bench = task.runBenchmark()
+        cmd = self._expandVars(self._configs['remote-cmd'])
+        bench = task.runBenchmark(cmd)
         if bench is None: # no more tests to run
             return None
 
@@ -262,7 +271,9 @@ class Dispatcher(object):
             self._killTasks()
             print('Stopping...')
 
-def get_machines_from_file(path):
+def get_machines(configs):
+    path = configs['machines']
+
     try:
         f = open(path, 'r')
     except IOError as e:
@@ -338,7 +349,19 @@ def parse_sets(dirpath, tasks):
         assign_set(dirpath, f, tasks)
 
 def usage():
-    sys.stderr.write("Usage: symbiotic-benchmarks machines.txt sets_dir\n")
+    sys.stderr.write(
+"""
+Usage: symbiotic-benchmarks OPTS
+
+OPTS can be:
+    --machines=file.txt             File with machines
+    --benchmarks-dir=dir_with_sets  Directory with sets of benchmarks
+    --no-sync                       Do not sync Symbiotic on remote machines
+    --sync=[yes/no]                 Whether to sync Symbiotic on remote machines
+
+For configuration is searched in symbiotic-benchmarks.conf file.
+Command-line argument have higher priority
+""")
 
 LOCKFILE = '.symbiotic-benchmarks-running'
 def create_lockfile():
@@ -357,41 +380,117 @@ def create_lockfile():
 
     return True
 
-def rsync_symbiotic(tasks, path):
-    print('[local] rsync Symbiotic ({0})'.format(path))
+def rsync_symbiotic(tasks, configs):
+    print('[local] rsync Symbiotic ({0})'.format(configs['rsync-dir']))
+
+    epath = os.path.expanduser(configs['rsync-dir'])
 
     for t in tasks:
-        subprocess.call(['rsync', '-rz', '--progress' , path,
-                        'statica@{0}:symbiotic/'.format(t.getMachine())])
+        subprocess.call(['rsync', '-rz', '--progress' , '--delete',
+                        epath, '{0}@{1}:{2}'
+                        .format(configs['ssh-user'], t.getMachine(),
+                        configs['rsync-remote-dir'])])
 
-def rsync_symbiotic_benchmarks(tasks):
+def rsync_symbiotic_benchmarks(tasks, configs):
     print('[local] rsync symbiotic-benchmarks')
 
     for t in tasks:
         subprocess.call(['rsync', '-rRz', '--progress', './symbiotic',
-                         '{0}:symbiotic-benchmarks/'
-                         .format(t.getMachine())])
+                         '{0}@{1}:{2}/symbiotic-benchmarks/'
+                         .format(configs['ssh-user'], t.getMachine(),
+                         configs['rsync-remote-dir'])])
 
-def do_sync(tasks):
+def do_sync(tasks, config):
+    if configs['sync'] != 'yes':
+        return
     try:
-        rsync_symbiotic_benchmarks(tasks)
-        # XXX don't hardcode it
-        rsync_symbiotic(tasks, os.path.expanduser('~/symbiotic/'))
+        rsync_symbiotic_benchmarks(tasks, configs)
+        rsync_symbiotic(tasks, configs)
     except KeyboardInterrupt:
         print('Stopping...')
         sys.exit(0)
+
+def parse_configs(path = 'symbiotic-benchmarks.conf'):
+    # fill in default values
+    conf = {'sync':'yes', 'ssh-user':'', 'rsync-remote-dir':'',
+            'remote-cmd':'echo "ERROR: No command specified"'}
+
+    if os.path.exists(path):
+        print('Using config file {0}'.format(path))
+    else:
+        return conf
+
+    try:
+        f = open(path, 'r')
+    except IOError as e:
+        err("Failed opening configuration file ({0}): {1}"
+            .format(path, e.strerror))
+
+    allowed_keys = ['rsync-dir', 'rsync-remote-dir', 'benchmarks-dir',
+                    'machines', 'ssh-user', 'remote-cmd', 'sync']
+
+    for line in f:
+        line = line.strip()
+        if not line or line[0] == '#':
+            continue
+
+        key, val = line.split('=', 1)
+        if key in allowed_keys:
+            conf[key] = val
+        else:
+            err('Unknown config key: {0}'.format(key))
+
+    return conf
+
+def parse_command_line(configs):
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], '',
+                                  ['help', 'machines=', 'benchmarks-dir=',
+                                   'no-sync', 'sync='])
+    except getopt.GetoptError as e:
+        err('{0}'.format(str(e)))
+
+    for opt, arg in opts:
+        if opt == '--help':
+            usage()
+            sys.exit(1)
+        elif opt == '--machines':
+            configs['machines'] = arg
+        elif opt == '--benchmarks-dir':
+            configs['benchmarks-dir'] = arg
+        elif opt == '--no-sync':
+            configs['sync'] = 'no'
+        elif opt == '--sync':
+            configs['sync'] = arg
+        else:
+            err('Unknown switch {0}'.format(opt))
+
+    if args:
+        usage()
+        sys.exit(1)
 
 if __name__ == "__main__":
     if not create_lockfile():
         err('Another instance of benchmarks is running')
 
-    if len(sys.argv) == 3:
-        tasks = get_machines_from_file(sys.argv[1])
-        do_sync(tasks)
-        parse_sets(sys.argv[2], tasks)
-        dispatcher = Dispatcher(tasks)
-    else:
-        usage()
-        sys.exit(1)
+    configs = parse_configs()
+    # command line has higher priority
+    parse_command_line(configs)
 
+    # we need at least machines and dir now
+    if not configs.has_key('machines'):
+        usage()
+        err('\nERROR: Need file with machines!')
+    if not configs.has_key('benchmarks-dir'):
+        usage()
+        err('\nERROR: Need directory with benchmarks sets!')
+
+
+
+    tasks = get_machines(configs)
+    do_sync(tasks, configs)
+
+    parse_sets(configs['benchmarks-dir'], tasks)
+
+    dispatcher = Dispatcher(tasks, configs)
     dispatcher.run()
