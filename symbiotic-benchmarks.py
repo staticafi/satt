@@ -435,6 +435,9 @@ def parse_configs(path = 'symbiotic-benchmarks.conf'):
             continue
 
         key, val = line.split('=', 1)
+        key = key.strip()
+        val = val.strip()
+
         if key in allowed_keys:
             conf[key] = val
         else:
