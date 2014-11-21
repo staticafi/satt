@@ -308,7 +308,7 @@ def get_machines(configs):
     return tasks
 
 def assign_set(dirpath, path, tasks):
-    relpath = os.path.join(dirpath, path)
+    relpath = os.path.join(os.path.expanduser(dirpath), path)
     try:
         f = open(relpath, 'r')
     except OSError as e:
@@ -337,7 +337,7 @@ def assign_set(dirpath, path, tasks):
 
 def parse_sets(dirpath, tasks):
     try:
-        files = os.listdir(dirpath)
+        files = os.listdir(os.path.expanduser(dirpath))
     except OSError as e:
         err('Failed opening dir with benchmarks ({0}): {1}'
             .format(dirpath, e.strerror))
