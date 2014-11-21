@@ -339,16 +339,20 @@ def assign_set(dirpath, path, tasks):
     f.close()
 
 def parse_sets(dirpath, tasks):
+    edirpath = os.path.expanduser(dirpath)
+
     try:
-        files = os.listdir(os.path.expanduser(dirpath))
+        files = os.listdir(edirpath)
     except OSError as e:
         err('Failed opening dir with benchmarks ({0}): {1}'
-            .format(dirpath, e.strerror))
+            .format(edirpath, e.strerror))
 
     for f in files:
         if f[-4:] != '.set':
             continue
 
+        # this path needs to be relative, since it can appear
+        # on remote computer
         assign_set(dirpath, f, tasks)
 
 def usage():
