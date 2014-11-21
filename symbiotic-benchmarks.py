@@ -92,6 +92,9 @@ class Task(object):
     def getMachine(self):
         return self._machine
 
+    def getCount(self):
+        return len(self._benchmarks)
+
     def runBenchmark(self, cmd = 'echo "NO COMMAND GIVEN"'):
         """
         Run one benchmark.
@@ -488,12 +491,19 @@ if __name__ == "__main__":
         usage()
         err('\nERROR: Need directory with benchmarks sets!')
 
-
-
     tasks = get_machines(configs)
     do_sync(tasks, configs)
 
     parse_sets(configs['benchmarks-dir'], tasks)
+
+    can_run = False
+    for t in tasks:
+        if t.getCount() > 0:
+            can_run = True
+            break;
+
+    if not can_run:
+        err('Not benchmarks queued for running, is the directory right?')
 
     dispatcher = Dispatcher(tasks, configs)
     dispatcher.run()
