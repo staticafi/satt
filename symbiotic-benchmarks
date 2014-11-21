@@ -347,6 +347,8 @@ def parse_sets(dirpath, tasks):
         err('Failed opening dir with benchmarks ({0}): {1}'
             .format(edirpath, e.strerror))
 
+    gotany = False
+
     for f in files:
         if f[-4:] != '.set':
             continue
@@ -354,6 +356,10 @@ def parse_sets(dirpath, tasks):
         # this path needs to be relative, since it can appear
         # on remote computer
         assign_set(dirpath, f, tasks)
+        gotany = True
+
+    if not gotany:
+        sys.stderr.write('Warning: Haven\'t found any .set file\n')
 
 def usage():
     sys.stderr.write(
