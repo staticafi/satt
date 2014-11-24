@@ -396,25 +396,80 @@ def create_lockfile():
 
     return True
 
+def track_rsync_progress(stdout, msg):
+    poll = select.poll()
+    stdout_fd = stdout.fileno()
+
+    flags = fcntl.fcntl(stdout_fd, fcntl.F_GETFL)
+    fcntl.fcntl(stdout_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
+    poll.register(stdout_fd, select.POLLIN |
+                  select.POLLERR | select.POLLHUP)
+
+    def get_progress(str):
+        sp = str.rindex(' ')
+        r = str[sp:]
+        vals = r.split('=', 1)
+        if vals[0].strip() != 'to-check':
+            raise ValueError('Not to-check line')
+
+        return vals[1][:-2]
+
+    done = False
+    while not done:
+        for fd, flags in poll.poll():
+            if flags & select.POLLERR:
+                err('Tracing rsync output')
+
+            if flags & select.POLLIN:
+                try:
+                    data = stdout.readline()
+                    while data:
+                        try:
+                            x = get_progress(data)
+                            sys.stdout.write('\r{0}: {1}'. format(msg, x))
+                            sys.stdout.flush()
+                        except ValueError:
+                            pass
+                        data = stdout.readline()
+                except IOError:
+                    continue
+
+            if flags & select.POLLHUP:
+                poll.unregister(fd)
+                print(' ... done')
+                done = True
+
+
 def rsync_symbiotic(tasks, configs):
     print('[local] rsync Symbiotic ({0})'.format(configs['symbiotic-dir']))
 
     epath = os.path.expanduser(configs['symbiotic-dir'])
 
     for t in tasks:
-        subprocess.call(['rsync', '-rzEm', '--progress' , '--delete',
-                        epath, '{0}@{1}:{2}'
-                        .format(configs['ssh-user'], t.getMachine(),
-                        configs['rsync-remote-dir'])])
+        p = subprocess.Popen(['rsync', '-rzEm', '--progress' , '--delete',
+                             epath, '{0}@{1}:{2}'
+                             .format(configs['ssh-user'], t.getMachine(),
+                             configs['rsync-remote-dir'])],
+                             bufsize = BUFSIZE, stdout = subprocess.PIPE,
+                             stderr = subprocess.STDOUT)
+
+        track_rsync_progress(p.stdout, 'Synchronizing Symbiotic with {0}'
+                             .format(t.getMachine()))
 
 def rsync_runner_scripts(tasks, configs):
     print('[local] rsync symbiotic-benchmarks scripts')
 
     for t in tasks:
-        subprocess.call(['rsync', '-rRzEm', '--progress', '--delete',
-                         './symbiotic', '{0}@{1}:{2}/symbiotic-benchmarks/'
-                         .format(configs['ssh-user'], t.getMachine(),
-                         configs['rsync-remote-dir'])])
+        p = subprocess.Popen(['rsync', '-rRzEm', '--progress', '--delete',
+                             './symbiotic', '{0}@{1}:{2}/symbiotic-benchmarks/'
+                             .format(configs['ssh-user'], t.getMachine(),
+                             configs['rsync-remote-dir'])],
+                             bufsize = BUFSIZE, stdout = subprocess.PIPE,
+                             stderr = subprocess.STDOUT)
+
+        track_rsync_progress(p.stdout, 'Synchronizing scripts with {0}'
+                             .format(t.getMachine()))
 
 
 def rsync_benchmarks(tasks, configs):
@@ -423,11 +478,16 @@ def rsync_benchmarks(tasks, configs):
     epath = os.path.expanduser(configs['benchmarks-dir'])
 
     for t in tasks:
-        subprocess.call(['rsync', '-rzm', '--progress' , '--delete',
-                        '--exclude=*/.svn/*'.format(epath), # exclude svn files
-                        epath, '{0}@{1}:{2}'
-                        .format(configs['ssh-user'], t.getMachine(),
-                        os.path.join(configs['rsync-remote-dir'], 'benchmarks'))])
+        p = subprocess.Popen(['rsync', '-rzm', '--progress' , '--delete',
+                             '--exclude=*/.svn/*'.format(epath), # exclude svn files
+                             epath, '{0}@{1}:{2}'
+                             .format(configs['ssh-user'], t.getMachine(),
+                             os.path.join(configs['rsync-remote-dir'], 'benchmarks'))],
+                             bufsize = BUFSIZE, stdout = subprocess.PIPE,
+                             stderr = subprocess.STDOUT)
+
+        track_rsync_progress(p.stdout, 'Synchronizing benchmarks with {0}'
+                             .format(t.getMachine()))
 
 def do_sync(tasks, config):
     try:
