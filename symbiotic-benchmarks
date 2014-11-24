@@ -427,7 +427,7 @@ def track_rsync_progress(stdout, msg):
                     while data:
                         try:
                             x = get_progress(data)
-                            sys.stdout.write('\r{0}: {1}'. format(msg, x))
+                            sys.stdout.write('\r{0}: {1} '. format(msg, x))
                             sys.stdout.flush()
                         except ValueError:
                             pass
@@ -437,7 +437,7 @@ def track_rsync_progress(stdout, msg):
 
             if flags & select.POLLHUP:
                 poll.unregister(fd)
-                print(' ... done')
+                print('... done')
                 done = True
 
 
@@ -479,7 +479,7 @@ def rsync_benchmarks(tasks, configs):
 
     for t in tasks:
         p = subprocess.Popen(['rsync', '-rzm', '--progress' , '--delete',
-                             '--exclude=*/.svn/*'.format(epath), # exclude svn files
+                             '--exclude=*/.svn/*', # exclude svn files
                              epath, '{0}@{1}:{2}'
                              .format(configs['ssh-user'], t.getMachine(),
                              os.path.join(configs['rsync-remote-dir'], 'benchmarks'))],
