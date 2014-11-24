@@ -313,14 +313,15 @@ def get_machines(configs):
     return tasks
 
 def assign_set(dirpath, path, tasks):
-    home = os.path.expanduser('~')
-    epath = os.path.join(os.path.expanduser(dirpath), path)
+    old_dir = os.getcwd()
+    epath = os.path.expanduser(dirpath)
+    os.chdir(epath)
 
     try:
-        f = open(epath, 'r')
+        f = open(path, 'r')
     except OSError as e:
         err("Failed opening set of benchmarks ({0}): {1}"
-            .format(epath, e.strerror))
+            .format(path, e.strerror))
 
     num = len(tasks)
     assert num > 0
@@ -332,18 +333,13 @@ def assign_set(dirpath, path, tasks):
         if not line:
             continue
 
-        # this is shell path with *, we need to expand it
-        # using glob
-        item = '{0}/{1}'.format(dirpath, line).strip()
-        item = os.path.expanduser(os.path.normpath(item))
-
         n = 0
-        for it in glob.iglob(item):
-            tasks[n % num].add(('~/{0}'
-                                .format(os.path.relpath(it, home)), cat))
-            n +=1
+        for it in glob.iglob(line):
+            tasks[n % num].add(('benchmarks/{0}'.format(it), cat))
+            n += 1
 
     f.close()
+    os.chdir(old_dir)
 
 def parse_sets(dirpath, tasks):
     edirpath = os.path.expanduser(dirpath)
@@ -406,7 +402,7 @@ def rsync_symbiotic(tasks, configs):
     epath = os.path.expanduser(configs['symbiotic-dir'])
 
     for t in tasks:
-        subprocess.call(['rsync', '-rz', '--progress' , '--delete',
+        subprocess.call(['rsync', '-rzEm', '--progress' , '--delete',
                         epath, '{0}@{1}:{2}'
                         .format(configs['ssh-user'], t.getMachine(),
                         configs['rsync-remote-dir'])])
@@ -415,26 +411,32 @@ def rsync_runner_scripts(tasks, configs):
     print('[local] rsync symbiotic-benchmarks scripts')
 
     for t in tasks:
-        subprocess.call(['rsync', '-rRz', '--progress', '--delete',
+        subprocess.call(['rsync', '-rRzEm', '--progress', '--delete',
                          './symbiotic', '{0}@{1}:{2}/symbiotic-benchmarks/'
                          .format(configs['ssh-user'], t.getMachine(),
                          configs['rsync-remote-dir'])])
 
+
 def rsync_benchmarks(tasks, configs):
-    print('[local] rsync benchmarks (sources)')
+    print('[local] rsync benchmarks ({0})'.format(configs['benchmarks-dir']))
+
+    epath = os.path.expanduser(configs['benchmarks-dir'])
 
     for t in tasks:
-        subprocess.call(['rsync', '-rRz', '--progress', '--delete',
-                         configs['benchmarks-dir'], '{0}@{1}:{2}/'
-                         .format(configs['ssh-user'], t.getMachine(),
-                         configs['rsync-remote-dir'])])
+        subprocess.call(['rsync', '-rzm', '--progress' , '--delete',
+                        '--exclude=*/.svn/*'.format(epath), # exclude svn files
+                        epath, '{0}@{1}:{2}'
+                        .format(configs['ssh-user'], t.getMachine(),
+                        os.path.join(configs['rsync-remote-dir'], 'benchmarks'))])
 
 def do_sync(tasks, config):
-    if configs['sync'] != 'yes':
-        return
     try:
-        rsync_runner_scripts(tasks, configs)
-        rsync_symbiotic(tasks, configs)
+        if configs['sync'] == 'yes' or configs['sync'] == 'runner':
+            rsync_runner_scripts(tasks, configs)
+        if configs['sync'] == 'yes' or configs['sync'] == 'symbiotic':
+            rsync_symbiotic(tasks, configs)
+        if configs['sync'] == 'yes' or configs['sync'] == 'benchmarks':
+            rsync_benchmarks(tasks, configs)
     except KeyboardInterrupt:
         print('Stopping...')
         sys.exit(0)
@@ -520,7 +522,10 @@ if __name__ == "__main__":
     tasks = get_machines(configs)
     do_sync(tasks, configs)
 
-    parse_sets(configs['benchmarks-dir'], tasks)
+    try:
+        parse_sets(configs['benchmarks-dir'], tasks)
+    except KeyboardInterrupt:
+        print('Stopping...')
 
     can_run = False
     for t in tasks:
