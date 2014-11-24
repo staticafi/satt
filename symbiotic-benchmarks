@@ -401,9 +401,9 @@ def create_lockfile():
     return True
 
 def rsync_symbiotic(tasks, configs):
-    print('[local] rsync Symbiotic ({0})'.format(configs['rsync-dir']))
+    print('[local] rsync Symbiotic ({0})'.format(configs['symbiotic-dir']))
 
-    epath = os.path.expanduser(configs['rsync-dir'])
+    epath = os.path.expanduser(configs['symbiotic-dir'])
 
     for t in tasks:
         subprocess.call(['rsync', '-rz', '--progress' , '--delete',
@@ -446,7 +446,7 @@ def parse_configs(path = 'symbiotic-benchmarks.conf'):
         err("Failed opening configuration file ({0}): {1}"
             .format(path, e.strerror))
 
-    allowed_keys = ['rsync-dir', 'rsync-remote-dir', 'benchmarks-dir',
+    allowed_keys = ['symbiotic-dir', 'rsync-remote-dir', 'benchmarks-dir',
                     'machines', 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync']
 
     for line in f:
