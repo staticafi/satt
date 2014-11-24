@@ -411,12 +411,21 @@ def rsync_symbiotic(tasks, configs):
                         .format(configs['ssh-user'], t.getMachine(),
                         configs['rsync-remote-dir'])])
 
-def rsync_symbiotic_benchmarks(tasks, configs):
-    print('[local] rsync symbiotic-benchmarks')
+def rsync_runner_scripts(tasks, configs):
+    print('[local] rsync symbiotic-benchmarks scripts')
 
     for t in tasks:
-        subprocess.call(['rsync', '-rRz', '--progress', './symbiotic',
-                         '{0}@{1}:{2}/symbiotic-benchmarks/'
+        subprocess.call(['rsync', '-rRz', '--progress', '--delete',
+                         './symbiotic', '{0}@{1}:{2}/symbiotic-benchmarks/'
+                         .format(configs['ssh-user'], t.getMachine(),
+                         configs['rsync-remote-dir'])])
+
+def rsync_benchmarks(tasks, configs):
+    print('[local] rsync benchmarks (sources)')
+
+    for t in tasks:
+        subprocess.call(['rsync', '-rRz', '--progress', '--delete',
+                         configs['benchmarks-dir'], '{0}@{1}:{2}/'
                          .format(configs['ssh-user'], t.getMachine(),
                          configs['rsync-remote-dir'])])
 
@@ -424,7 +433,7 @@ def do_sync(tasks, config):
     if configs['sync'] != 'yes':
         return
     try:
-        rsync_symbiotic_benchmarks(tasks, configs)
+        rsync_runner_scripts(tasks, configs)
         rsync_symbiotic(tasks, configs)
     except KeyboardInterrupt:
         print('Stopping...')
