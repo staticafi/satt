@@ -448,6 +448,8 @@ def rsync_symbiotic(tasks, configs):
 
     for t in tasks:
         p = subprocess.Popen(['rsync', '-rzEm', '--progress' , '--delete',
+                             '--exclude=*/logs/*',
+                             '--exclude=*/cmake/*',
                              epath, '{0}@{1}:{2}'
                              .format(configs['ssh-user'], t.getMachine(),
                              configs['rsync-remote-dir'])],
@@ -478,7 +480,7 @@ def rsync_benchmarks(tasks, configs):
     epath = os.path.expanduser(configs['benchmarks-dir'])
 
     for t in tasks:
-        p = subprocess.Popen(['rsync', '-rzm', '--progress' , '--delete',
+        p = subprocess.Popen(['rsync', '-rzm', '--progress',
                              '--exclude=*/.svn/*', # exclude svn files
                              epath, '{0}@{1}:{2}'
                              .format(configs['ssh-user'], t.getMachine(),
