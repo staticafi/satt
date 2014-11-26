@@ -330,7 +330,7 @@ def assign_set(dirpath, path, tasks):
 
     for line in f:
         line = line.strip()
-        if not line:
+        if not line or line[-1:] == 'i':
             continue
 
         n = 0
@@ -450,6 +450,7 @@ def rsync_symbiotic(tasks, configs):
         p = subprocess.Popen(['rsync', '-rzEm', '--progress' , '--delete',
                              '--exclude=*/logs/*',
                              '--exclude=*/cmake/*',
+                             '--exclude=*.a', # we don't need static libs
                              epath, '{0}@{1}:{2}'
                              .format(configs['ssh-user'], t.getMachine(),
                              configs['rsync-remote-dir'])],
@@ -463,8 +464,9 @@ def rsync_runner_scripts(tasks, configs):
     print('[local] rsync symbiotic-benchmarks scripts')
 
     for t in tasks:
-        p = subprocess.Popen(['rsync', '-rRzEm', '--progress', '--delete',
-                             './symbiotic', '{0}@{1}:{2}/symbiotic-benchmarks/'
+        p = subprocess.Popen(['rsync', '-rRzEm', '--progress',
+                             './run_on_benchmark.sh',
+                             '{0}@{1}:{2}/symbiotic-benchmarks/'
                              .format(configs['ssh-user'], t.getMachine(),
                              configs['rsync-remote-dir'])],
                              bufsize = BUFSIZE, stdout = subprocess.PIPE,
@@ -482,6 +484,7 @@ def rsync_benchmarks(tasks, configs):
     for t in tasks:
         p = subprocess.Popen(['rsync', '-rzm', '--progress',
                              '--exclude=*/.svn/*', # exclude svn files
+                             '--exclude=*.i', # exclude all *.i files
                              epath, '{0}@{1}:{2}'
                              .format(configs['ssh-user'], t.getMachine(),
                              os.path.join(configs['rsync-remote-dir'], 'benchmarks'))],
