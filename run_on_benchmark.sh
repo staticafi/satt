@@ -11,6 +11,10 @@ echo "### VERSIONS"
 SYMBIOTIC_DIR="`readlink -f $1`"
 BENCHMARK="`readlink -f $2`"
 
+# first, set environment. bens have some header files in
+# weird path
+export C_INCLUDE_PATH=$C_INCLUDE_PATH:$SYMBIOTIC_DIR/include:/usr/include/x86_64-linux-gnu/
+
 # use temporary directory for running
 RUNDIR=`mktemp --directory --tmpdir="." symbiotic.XXXXXXXXXX`
 
