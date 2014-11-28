@@ -14,6 +14,8 @@ BENCHMARK="`readlink -f $2`"
 # first, set environment. bens have some header files in
 # weird path
 export C_INCLUDE_PATH=$C_INCLUDE_PATH:$SYMBIOTIC_DIR/include:/usr/include/x86_64-linux-gnu/
+export PATH=$HOME/local/bin:$PATH
+export LD_LIBRARY_PATH=$HOME/local/lib64:$HOME/local/lib:$LD_LIBRARY_PATH
 
 # use temporary directory for running
 RUNDIR=`mktemp --directory --tmpdir="." symbiotic.XXXXXXXXXX`
@@ -39,7 +41,6 @@ cp "$BENCHMARK" .
 FILE="`basename $BENCHMARK`"
 
 # run symbiotic
-echo "### START"
 RESULT="`${RUNME} ${FILE}`" || RESULT='ERROR'
 
 # report result
