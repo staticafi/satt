@@ -440,26 +440,6 @@ def track_rsync_progress(stdout, msg):
                 print('... done')
                 done = True
 
-
-def rsync_symbiotic(tasks, configs):
-    print('[local] rsync Symbiotic ({0})'.format(configs['symbiotic-dir']))
-
-    epath = os.path.expanduser(configs['symbiotic-dir'])
-
-    for t in tasks:
-        p = subprocess.Popen(['rsync', '-rzEm', '--progress' , '--delete',
-                             '--exclude=*/logs/*',
-                             '--exclude=*/cmake/*',
-                             '--exclude=*.a', # we don't need static libs
-                             epath, '{0}@{1}:{2}'
-                             .format(configs['ssh-user'], t.getMachine(),
-                             configs['rsync-remote-dir'])],
-                             bufsize = BUFSIZE, stdout = subprocess.PIPE,
-                             stderr = subprocess.STDOUT)
-
-        track_rsync_progress(p.stdout, 'Synchronizing Symbiotic with {0}'
-                             .format(t.getMachine()))
-
 def rsync_runner_scripts(tasks, configs):
     print('[local] rsync symbiotic-benchmarks scripts')
 
@@ -474,34 +454,10 @@ def rsync_runner_scripts(tasks, configs):
 
         track_rsync_progress(p.stdout, 'Synchronizing scripts with {0}'
                              .format(t.getMachine()))
-
-
-def rsync_benchmarks(tasks, configs):
-    print('[local] rsync benchmarks ({0})'.format(configs['benchmarks-dir']))
-
-    epath = os.path.expanduser(configs['benchmarks-dir'])
-
-    for t in tasks:
-        p = subprocess.Popen(['rsync', '-rzm', '--progress',
-                             '--exclude=*/.svn/*', # exclude svn files
-                             '--exclude=*.i', # exclude all *.i files
-                             epath, '{0}@{1}:{2}'
-                             .format(configs['ssh-user'], t.getMachine(),
-                             os.path.join(configs['rsync-remote-dir'], 'benchmarks'))],
-                             bufsize = BUFSIZE, stdout = subprocess.PIPE,
-                             stderr = subprocess.STDOUT)
-
-        track_rsync_progress(p.stdout, 'Synchronizing benchmarks with {0}'
-                             .format(t.getMachine()))
-
 def do_sync(tasks, config):
     try:
-        if configs['sync'] == 'yes' or configs['sync'] == 'runner':
+        if configs['sync'] == 'yes':
             rsync_runner_scripts(tasks, configs)
-        if configs['sync'] == 'yes' or configs['sync'] == 'symbiotic':
-            rsync_symbiotic(tasks, configs)
-        if configs['sync'] == 'yes' or configs['sync'] == 'benchmarks':
-            rsync_benchmarks(tasks, configs)
     except KeyboardInterrupt:
         print('Stopping...')
         sys.exit(0)
