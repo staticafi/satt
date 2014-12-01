@@ -115,9 +115,8 @@ class Task(object):
         ecmd = cmd.replace('{machine}', self._machine)
         ecmd = ecmd.replace('{benchmark}', name)
 
-        print('[local] Running task {0}:{1}'.format(self._machine,
-                                                    os.path.basename(name)))
-        print ecmd
+        #print('[local] Running task {0}:{1}'.format(self._machine,
+        #                                            os.path.basename(name)))
         p = subprocess.Popen(ecmd, BUFSIZE, shell = True,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.STDOUT)
