@@ -23,9 +23,21 @@ export LOGSDIR="`readlink -f .`/logs"
 
 clean_and_exit()
 {
+	# go back to the parent directory, so that
+	# we can delete the temporary one
+	cd ..
+
 	rm -rf "$RUNDIR"
 	exit $1
 }
+
+tmout()
+{
+	# the trap already printed a message
+	clean_and_exit 1
+}
+
+trap tmout 14
 
 RUNME="$SYMBIOTIC_DIR/runme"
 
@@ -41,9 +53,5 @@ RESULT="`${RUNME} ${FILE}`" || RESULT='ERROR'
 
 # report result
 echo "$RESULT"
-
-# go back to the parent directory, so that
-# we can delete the temporary one
-cd ..
 
 clean_and_exit 0

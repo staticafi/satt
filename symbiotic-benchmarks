@@ -53,6 +53,7 @@ class RunningBenchmark(object):
         self.task = task
         self.name = name
         self.category = cat
+        self.result = None
 
     def readOutput(self):
         return self.proc.stdout.readline()
@@ -115,8 +116,8 @@ class Task(object):
         ecmd = cmd.replace('{machine}', self._machine)
         ecmd = ecmd.replace('{benchmark}', name)
 
-        #print('[local] Running task {0}:{1}'.format(self._machine,
-        #                                            os.path.basename(name)))
+        print('[local] Running task {0}:{1}'.format(self._machine,
+                                                    os.path.basename(name)))
         p = subprocess.Popen(ecmd, BUFSIZE, shell = True,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.STDOUT)
@@ -136,6 +137,10 @@ class BenchmarkReport(object):
 
         raise NotImplementedError("Child class needs to override this method")
 
+    def done(self, rb):
+        " The benchmark is done"
+        raise NotImplementedError("Child class needs to override this method")
+
 
 class StdoutReporter(BenchmarkReport):
     """ Report results of benchmark to stdout """
@@ -150,9 +155,24 @@ class StdoutReporter(BenchmarkReport):
         mach = rb.task.getMachine()
         name = rb.name
 
+        if msg.strip() == 'Alarm clock':
+            rb.result = 'TIMEOUT'
+
         sys.stdout.write('[{0}:{1}] '.format(mach, os.path.basename(name)))
-        print(msg.rstrip())
+        if not rb.result is None:
+            print(rb.result)
+        else:
+            print(msg.rstrip())
+
         sys.stdout.flush()
+
+    def done(self, rb):
+        mach = rb.task.getMachine()
+        name = rb.name
+
+        if rb.result is None:
+            sys.stdout.write('[{0}:{1}] NO RESULT!\n'.format(mach, os.path.basename(name)))
+            sys.stdout.flush()
 
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """
@@ -254,6 +274,7 @@ class Dispatcher(object):
                 if flags & select.POLLHUP:
                     # remove the old benchmark
                     bench = self._unregisterFd(fd)
+                    self._report.done(bench)
                     # run new benchmark
                     self._runBenchmark(bench.task)
 
