@@ -87,13 +87,6 @@ class Task(object):
         """ Add new test to the task """
         self._benchmarks.append(test)
 
-    def dump(self):
-        """ Print task in human readable form """
-        print("Task on {0} (parallely {1})".format(self._machine,
-                                                   self._parallel_no))
-        for t in self._benchmarks:
-            print("\t -> {0}".format(t))
-
     def getParallel(self):
         return self._parallel_no
 
