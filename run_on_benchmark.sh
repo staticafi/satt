@@ -31,13 +31,15 @@ clean_and_exit()
 	exit $1
 }
 
-tmout()
+trap_func()
 {
 	# the trap already printed a message
 	clean_and_exit 1
 }
 
-trap tmout 14
+# dunno why, but it does not work with SIG*,
+# must use numbers
+trap trap_func 1 2 3 5 6 9 11 13 15
 
 RUNME="$SYMBIOTIC_DIR/runme"
 

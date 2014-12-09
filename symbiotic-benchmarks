@@ -53,7 +53,14 @@ class RunningBenchmark(object):
         self.task = task
         self.name = name
         self.category = cat
+
+        # here the reporter can save result of benchmark and
+        # arbitrary auxiliary output
         self.result = None
+        self.output = ''
+        self.versions = None
+        self.memory = None
+        self.time = None
 
     def readOutput(self):
         return self.proc.stdout.readline()
@@ -96,7 +103,7 @@ class Task(object):
     def getCount(self):
         return len(self._benchmarks)
 
-    def runBenchmark(self, cmd = 'echo "NO COMMAND GIVEN"'):
+    def runBenchmark(self, cmd):
         """
         Run one benchmark.
 
@@ -127,6 +134,9 @@ class Task(object):
 class BenchmarkReport(object):
     """ Report results of benchmark. This is a abstract class """
 
+    def __init__(self):
+        self._state = None
+
     def report(self, msg, rb):
         """
         Report what happens for one benchmark.
@@ -134,45 +144,87 @@ class BenchmarkReport(object):
         \param msg      one line of the output of the benchmark
         \param rb       instance of RunningBenchmark
         """
+        mach = rb.task.getMachine()
+        name = rb.name
+        s = msg.strip()
 
-        raise NotImplementedError("Child class needs to override this method")
+        rb.output += '{0}\n'.format(s)
+
+        if s == '=== VERSIONS':
+            self._state = 'VERSIONS'
+            return
+        elif s == '=== RESULT':
+            self._state = 'RESULTS'
+            return
+        elif s == '=== MEMORY USAGE':
+            self._state = 'MEMORY USAGE'
+            return
+        elif s == '=== TIME CONSUMED':
+            self._state = 'TIME CONSUMED'
+            return
+
+        #if self._state is None:
+
+        if self._state == 'VERSIONS':
+            self.versions(rb, s);
+        elif self._state == 'RESULT':
+            self.result(rb, s);
+        elif self._state == 'MEMORY USAGE':
+            self.memoryUsage(rb, s);
+        elif self._state == 'TIME CONSUMED':
+            self.timeConsumed(rb, s);
 
     def done(self, rb):
         " The benchmark is done"
         raise NotImplementedError("Child class needs to override this method")
 
+    def result(self, rb, msg):
+        raise NotImplementedError("Child class needs to override this method")
+
+    def versions(self, rb, msg):
+        raise NotImplementedError("Child class needs to override this method")
+
+    def memoryUsage(self, rb, msg):
+        raise NotImplementedError("Child class needs to override this method")
+
+    def timeConsumed(self, rb, msg):
+        raise NotImplementedError("Child class needs to override this method")
 
 class StdoutReporter(BenchmarkReport):
     """ Report results of benchmark to stdout """
 
-    def report(self, msg, rb):
-        """
-        Report what happens for one benchmark.
-
-        \param msg      one line of the output of the benchmark
-        \param rb       instance of RunningBenchmark
-        """
-        mach = rb.task.getMachine()
-        name = rb.name
-
-        if msg.strip() == 'Alarm clock':
+    def result(self, rb, msg):
+        if msg == 'TIMEOUT':
             rb.result = 'TIMEOUT'
+        elif msg == 'FALSE':
+            rb.result = 'FALSE'
+        elif msg == 'ERROR':
+            rb.result = 'ERROR'
+        elif msg == 'TRUE':
+            rb.result = 'TRUE'
+        elif msg == 'UNKNOWN':
+            rb.result = 'UNKNOWN'
 
-        sys.stdout.write('[{0}:{1}] '.format(mach, os.path.basename(name)))
-        if not rb.result is None:
-            print(rb.result)
-        else:
-            print(msg.rstrip())
-
-        sys.stdout.flush()
+        #sys.stdout.write('[{0}:{1}] '.format(mach, os.path.basename(name)))
+        #print(s)
+        #sys.stdout.flush()
 
     def done(self, rb):
         mach = rb.task.getMachine()
         name = rb.name
 
-        if rb.result is None:
-            sys.stdout.write('[{0}:{1}] NO RESULT!\n'.format(mach, os.path.basename(name)))
-            sys.stdout.flush()
+        print(rb.name)
+        print(rb.output)
+        sys.stdout.flush()
+
+    def versions(self, rb, msg):
+        pass
+
+    def memoryUsage(self, rb, msg):
+        pass
+
+    def timeConsumed(self, rb, msg):
+        pass
 
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """
@@ -463,6 +515,7 @@ def track_rsync_progress(stdout, msg):
 def rsync_runner_scripts(tasks, configs):
     print('[local] rsync symbiotic-benchmarks scripts')
 
+    # XXX do it parallely (same as the tasks)
     for t in tasks:
         p = subprocess.Popen(['rsync', '-rRzEm', '--progress',
                              './run_on_benchmark.sh',
@@ -472,8 +525,20 @@ def rsync_runner_scripts(tasks, configs):
                              bufsize = BUFSIZE, stdout = subprocess.PIPE,
                              stderr = subprocess.STDOUT)
 
-        track_rsync_progress(p.stdout, 'Synchronizing scripts with {0}'
+        track_rsync_progress(p.stdout, 'Synchronizing scripts (1) with {0}'
                              .format(t.getMachine()))
+
+        p = subprocess.Popen(['rsync', '-rRzEm', '--progress',
+                             './run_benchmark',
+                             '{0}@{1}:{2}/symbiotic-benchmarks/'
+                             .format(configs['ssh-user'], t.getMachine(),
+                             configs['rsync-remote-dir'])],
+                             bufsize = BUFSIZE, stdout = subprocess.PIPE,
+                             stderr = subprocess.STDOUT)
+
+        track_rsync_progress(p.stdout, 'Synchronizing scripts (2) with {0}'
+                             .format(t.getMachine()))
+
 def do_sync(tasks, config):
     try:
         if configs['sync'] == 'yes':
@@ -499,7 +564,8 @@ def parse_configs(path = 'symbiotic-benchmarks.conf'):
             .format(path, e.strerror))
 
     allowed_keys = ['symbiotic-dir', 'rsync-remote-dir', 'benchmarks-dir',
-                    'machines', 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync']
+                    'machines', 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync',
+                    'timeout']
 
     for line in f:
         line = line.strip()

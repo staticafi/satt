@@ -5,6 +5,7 @@ import subprocess
 import signal
 import os
 import atexit
+import resource
 
 class Timeout(Exception):
     pass
@@ -21,6 +22,24 @@ def run_symbiotic(dir, file):
     p = subprocess.Popen(['{0}/run_on_benchmark.sh'.format(path), dir, file])
     return p
 
+def printTimeConsumed():
+    us = resource.getrusage(resource.RUSAGE_CHILDREN)
+    usr = getattr(us, 'ru_utime')
+    syst = getattr(us, 'ru_stime')
+
+    print('=== TIME CONSUMED')
+    print(usr + syst)
+    sys.stdout.flush()
+
+
+def printMemoryUsage():
+    us = resource.getrusage(resource.RUSAGE_CHILDREN)
+    maxrss = getattr(us, 'ru_maxrss')
+
+    print('=== MEMORY USAGE')
+    print(maxrss)
+    sys.stdout.flush()
+
 if __name__ == "__main__":
     symbiotic_dir = sys.argv[1]
     benchmark = sys.argv[2]
@@ -31,21 +50,30 @@ if __name__ == "__main__":
 
     start_timeout(timeout)
 
+    print('=== RESULT')
+    sys.stdout.flush()
     try:
         p = run_symbiotic(symbiotic_dir, benchmark)
-
         (out, err) = p.communicate()
-
-        print('=== RESULT')
 
         if p.returncode != 0:
             print('ERROR')
 
-        print(out)
-        print(err)
+        # these should be None ...
+        if not out is None:
+            print(out)
+        if not err is None:
+            print(err)
+
+        sys.stdout.flush()
     except Timeout:
         print('TIMEOUT')
+        sys.stdout.flush()
+
         # use this instead of p.kill(), because
         # p.kill() does not kill the klee for some
         # reason
         os.kill(0, signal.SIGKILL)
+
+    printTimeConsumed()
+    printMemoryUsage()
