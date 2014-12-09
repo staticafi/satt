@@ -62,6 +62,8 @@ class RunningBenchmark(object):
         self.memory = None
         self.time = None
 
+        self._state = None # what are we just reading?
+
     def readOutput(self):
         return self.proc.stdout.readline()
 
@@ -116,8 +118,8 @@ class Task(object):
         ecmd = cmd.replace('{machine}', self._machine)
         ecmd = ecmd.replace('{benchmark}', name)
 
-        print('[local] Running task {0}:{1}'.format(self._machine,
-                                                    os.path.basename(name)))
+        #print('[local] Running {0}:{1}'.format(self._machine,
+        #                                       os.path.basename(name)))
         p = subprocess.Popen(ecmd, BUFSIZE, shell = True,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.STDOUT)
@@ -126,9 +128,6 @@ class Task(object):
 
 class BenchmarkReport(object):
     """ Report results of benchmark. This is a abstract class """
-
-    def __init__(self):
-        self._state = None
 
     def report(self, msg, rb):
         """
@@ -141,50 +140,35 @@ class BenchmarkReport(object):
         name = rb.name
         s = msg.strip()
 
-        rb.output += '{0}\n'.format(s)
+        rb.output += '>> {0}\n'.format(s)
 
         if s == '=== VERSIONS':
-            self._state = 'VERSIONS'
+            rb._state = 'VERSIONS'
             return
         elif s == '=== RESULT':
-            self._state = 'RESULTS'
+            rb._state = 'RESULT'
             return
         elif s == '=== MEMORY USAGE':
-            self._state = 'MEMORY USAGE'
+            rb._state = 'MEMORY USAGE'
             return
         elif s == '=== TIME CONSUMED':
-            self._state = 'TIME CONSUMED'
+            rb._state = 'TIME CONSUMED'
             return
 
-        #if self._state is None:
-
-        if self._state == 'VERSIONS':
+        if rb._state is None:
+            rb.output += '{0}\n'.format(s)
+        elif rb._state == 'VERSIONS':
             self.versions(rb, s);
-        elif self._state == 'RESULT':
+        elif rb._state == 'RESULT':
             self.result(rb, s);
-        elif self._state == 'MEMORY USAGE':
+        elif rb._state == 'MEMORY USAGE':
             self.memoryUsage(rb, s);
-        elif self._state == 'TIME CONSUMED':
+        elif rb._state == 'TIME CONSUMED':
             self.timeConsumed(rb, s);
 
     def done(self, rb):
         " The benchmark is done"
         raise NotImplementedError("Child class needs to override this method")
-
-    def result(self, rb, msg):
-        raise NotImplementedError("Child class needs to override this method")
-
-    def versions(self, rb, msg):
-        raise NotImplementedError("Child class needs to override this method")
-
-    def memoryUsage(self, rb, msg):
-        raise NotImplementedError("Child class needs to override this method")
-
-    def timeConsumed(self, rb, msg):
-        raise NotImplementedError("Child class needs to override this method")
-
-class StdoutReporter(BenchmarkReport):
-    """ Report results of benchmark to stdout """
 
     def result(self, rb, msg):
         if msg == 'TIMEOUT':
@@ -197,27 +181,65 @@ class StdoutReporter(BenchmarkReport):
             rb.result = 'TRUE'
         elif msg == 'UNKNOWN':
             rb.result = 'UNKNOWN'
+        else:
+            rb.output += 'RESULT: {0}\n'.format(msg)
 
-        #sys.stdout.write('[{0}:{1}] '.format(mach, os.path.basename(name)))
-        #print(s)
-        #sys.stdout.flush()
+    def versions(self, rb, msg):
+            rb.versions += '{0}\n'.format(msg)
+
+    def memoryUsage(self, rb, msg):
+        try:
+            if not rb.memory is None:
+                raise ValueError('Memory usage already set')
+
+            rb.memory = int(msg)
+        except ValueError:
+            rb.output += 'MEMORY USAGE: {0}\n'.format(msg)
+
+    def timeConsumed(self, rb, msg):
+        try:
+            if not rb.time is None:
+                raise ValueError('Time already set')
+
+            rb.time = int(msg)
+        except ValueError:
+            rb.output += 'TIME CONSUMED: {0}\n'.format(msg)
+
+
+def colored(msg, c = None):
+    isatty = os.isatty(sys.stdout.fileno())
+    if isatty and not c is None:
+        if c == 'red':
+            c = '\033[1;31m'
+        elif c == 'green':
+            c = '\033[1;32m'
+        elif c == 'gray':
+            c = '\033[1;30m'
+        elif c == 'blue':
+            c = '\033[1;34m'
+
+        return "{0}{1}{2}".format(c, msg, '\033[0m')
+    else:
+        return msg
+
+class StdoutReporter(BenchmarkReport):
+    """ Report results of benchmark to stdout """
 
     def done(self, rb):
         mach = rb.task.getMachine()
         name = rb.name
 
-        print(rb.name)
-        print(rb.output)
+        color = None
+        if rb.result == 'TIMEOUT' or rb.result == 'ERROR' or rb.result is None:
+            color = 'red'
+        print(colored('{0} - {1}: {2}'.format(rb.category,
+                                              os.path.basename(name),
+                                              rb.result), color))
+
+        if rb.result is None:
+            print(colored(rb.output, 'blue'))
+
         sys.stdout.flush()
-
-    def versions(self, rb, msg):
-        pass
-
-    def memoryUsage(self, rb, msg):
-        pass
-
-    def timeConsumed(self, rb, msg):
-        pass
 
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """
@@ -325,6 +347,8 @@ class Dispatcher(object):
 
     def run(self):
         """ Dispatch tasks over network and wait for outcomes """
+
+        print('[local] Started dispatching benchmarks')
 
         # take every task and call as many of benchmarks as
         # you are allowed. Later, when a task ends,
