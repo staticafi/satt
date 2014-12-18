@@ -36,6 +36,7 @@ import errno
 import glob
 import atexit
 import getopt
+import MySQLdb as db
 
 BUFSIZE = 1024
 
@@ -140,8 +141,6 @@ class BenchmarkReport(object):
         name = rb.name
         s = msg.strip()
 
-        rb.output += '>> {0}\n'.format(s)
-
         if s == '=== VERSIONS':
             rb._state = 'VERSIONS'
             return
@@ -210,13 +209,15 @@ def colored(msg, c = None):
     isatty = os.isatty(sys.stdout.fileno())
     if isatty and not c is None:
         if c == 'red':
-            c = '\033[1;31m'
+            c = '\033[0;31m'
         elif c == 'green':
-            c = '\033[1;32m'
+            c = '\033[0;32m'
         elif c == 'gray':
-            c = '\033[1;30m'
+            c = '\033[0;30m'
         elif c == 'blue':
             c = '\033[1;34m'
+        elif c == 'yellow':
+            c = '\033[0;33m'
 
         return "{0}{1}{2}".format(c, msg, '\033[0m')
     else:
@@ -230,26 +231,95 @@ class StdoutReporter(BenchmarkReport):
         name = rb.name
 
         color = None
-        if rb.result == 'TIMEOUT' or rb.result == 'ERROR' or rb.result is None:
+        t = rb.name.find('true')
+        f = rb.name.find('false')
+
+        if rb.result == 'ERROR' or rb.result is None:
             color = 'red'
+        elif rb.result == 'UNKNOWN':
+            color = 'yellow'
+        elif rb.result == 'TRUE':
+            # if there is not true or false is before true
+            # in the name
+            if t == -1 or (f != -1 and f < t):
+                color = 'red'
+            else:
+                color = 'green'
+        elif rb.result == 'FALSE':
+            if f == -1 or (t != -1 and t < f):
+                color = 'red'
+            else:
+                color = 'green'
+
         print(colored('{0} - {1}: {2}'.format(rb.category,
                                               os.path.basename(name),
                                               rb.result), color))
+
 
         if rb.result is None:
             print(colored(rb.output, 'blue'))
 
         sys.stdout.flush()
 
+class MysqlReporter(BenchmarkReport):
+
+    def __init__(self, configs):
+        # use this to print out what is happening
+        self._stdout = StdoutReporter()
+
+        try:
+            self._conn = db.connect('localhost', 'statica',
+                                    'statica', 'statica')
+            self._cursor = self._conn.cursor()
+        except _mysql.Error as e:
+            sys.stderr.write('{0}\n'.format(str(e)))
+            sys.exit(1)
+
+        self._db('SELECT VERSION()')
+        ver = self._db_fetchone()
+        print('Connected to database: MySQL version {0}'.format(*ver))
+
+    def _db(self, query):
+        try:
+            self._cursor.execute(query)
+        except db.Error as e:
+            sys.stderr.write('Failed querying db {0}\n'.format(e.args[1]))
+            sys.exit(1)
+
+    def _db_fetchone(self):
+        return self._cursor.fetchone()
+
+    def _db_fetchall(self):
+        return self._cursor.fetchall()
+
+    def __del__(self):
+        self._conn.close()
+
+    def done(self, rb):
+        # print it after saving
+        self._stdout.done(rb)
+
+        # get category and id of the task
+        tmp = os.path.basename(configs['benchmarks-dir'])
+        pos = rb.name.rfind(tmp)
+        pos += rb.name[pos:].index('/')
+
+        query = 'SELECT id, category_id from tasks where name = \'{0}\''.format(
+                rb.name[pos + 1:])
+        self._db(query)
+
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """
 
-    def __init__(self, tasks = [], configs = dict()):
+    def __init__(self, configs, tasks = []):
         self._tasks = tasks
         self._poller = select.poll()
         self._fds = dict()
-        self._report = StdoutReporter()
         self._configs = configs
+        if configs['no-db'] == 'yes':
+            self._report = StdoutReporter()
+        else:
+            self._report = MysqlReporter(configs)
 
     def add(self, task):
         """ Add new task """
@@ -567,7 +637,8 @@ def do_sync(tasks, config):
 def parse_configs(path = 'symbiotic-benchmarks.conf'):
     # fill in default values
     conf = {'sync':'yes', 'ssh-user':'', 'rsync-remote-dir':'',
-            'remote-cmd':'echo "ERROR: No command specified"'}
+            'remote-cmd':'echo "ERROR: No command specified"',
+            'no-db':'no'}
 
     if os.path.exists(path):
         print('Using config file {0}'.format(path))
@@ -582,7 +653,7 @@ def parse_configs(path = 'symbiotic-benchmarks.conf'):
 
     allowed_keys = ['symbiotic-dir', 'rsync-remote-dir', 'benchmarks-dir',
                     'machines', 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync',
-                    'timeout']
+                    'timeout', 'no-db']
 
     for line in f:
         line = line.strip()
@@ -604,7 +675,7 @@ def parse_command_line(configs):
     try:
         opts, args = getopt.getopt(sys.argv[1:], '',
                                   ['help', 'machines=', 'benchmarks-dir=',
-                                   'no-sync', 'sync='])
+                                   'no-sync', 'no-db', 'sync='])
     except getopt.GetoptError as e:
         err('{0}'.format(str(e)))
 
@@ -620,6 +691,8 @@ def parse_command_line(configs):
             configs['sync'] = 'no'
         elif opt == '--sync':
             configs['sync'] = arg
+        elif opt == '--no-db':
+            configs['no-db'] = 'yes'
         else:
             err('Unknown switch {0}'.format(opt))
 
@@ -660,5 +733,5 @@ if __name__ == "__main__":
     if not can_run:
         err('Not benchmarks queued for running, is the directory right?')
 
-    dispatcher = Dispatcher(tasks, configs)
+    dispatcher = Dispatcher(configs, tasks)
     dispatcher.run()
