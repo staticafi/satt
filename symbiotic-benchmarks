@@ -299,14 +299,9 @@ class MysqlReporter(BenchmarkReport):
         # print it after saving
         self._stdout.done(rb)
 
-        # get category and id of the task
-        tmp = os.path.basename(configs['benchmarks-dir'])
-        pos = rb.name.rfind(tmp)
-        pos += rb.name[pos:].index('/')
-
-        query = 'SELECT id, category_id from tasks where name = \'{0}\''.format(
-                rb.name[pos + 1:])
-        self._db(query)
+        #query = 'SELECT id, category_id from tasks where name = \'{0}\''.format(
+        #        rb.name[pos + 1:])
+        #self._db(query)
 
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """
@@ -471,9 +466,13 @@ def get_machines(configs):
 
     return tasks
 
+def expand(path):
+    return os.path.expanduser(os.path.expandvars(path))
+
+
 def assign_set(dirpath, path, tasks):
     old_dir = os.getcwd()
-    epath = os.path.expanduser(dirpath)
+    epath = expand(dirpath)
     os.chdir(epath)
 
     try:
@@ -500,7 +499,7 @@ def assign_set(dirpath, path, tasks):
     f.close()
     os.chdir(old_dir)
 
-def parse_sets(dirpath, tasks):
+def assign_set_dir(dirpath, tasks):
     edirpath = os.path.expanduser(dirpath)
 
     try:
@@ -522,6 +521,19 @@ def parse_sets(dirpath, tasks):
 
     if not gotany:
         sys.stderr.write('Warning: Haven\'t found any .set file\n')
+
+def get_benchmarks(files, tasks):
+    items = files.split(',')
+
+    for it in items:
+        for path in glob.glob(expand(it)):
+            # get folder or .set file
+            if os.path.isdir(path):
+                assign_set_dir(path, tasks)
+            elif os.path.isfile(path):
+                dirpath = os.path.dirname(path)
+                basename = os.path.basename(path)
+                assign_set(dirpath, basename, tasks)
 
 def usage():
     sys.stderr.write(
@@ -651,7 +663,7 @@ def parse_configs(path = 'symbiotic-benchmarks.conf'):
         err("Failed opening configuration file ({0}): {1}"
             .format(path, e.strerror))
 
-    allowed_keys = ['symbiotic-dir', 'rsync-remote-dir', 'benchmarks-dir',
+    allowed_keys = ['symbiotic-dir', 'rsync-remote-dir', 'benchmarks',
                     'machines', 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync',
                     'timeout', 'no-db']
 
@@ -674,7 +686,7 @@ def parse_configs(path = 'symbiotic-benchmarks.conf'):
 def parse_command_line(configs):
     try:
         opts, args = getopt.getopt(sys.argv[1:], '',
-                                  ['help', 'machines=', 'benchmarks-dir=',
+                                  ['help', 'machines=', 'benchmarks=',
                                    'no-sync', 'no-db', 'sync='])
     except getopt.GetoptError as e:
         err('{0}'.format(str(e)))
@@ -685,8 +697,8 @@ def parse_command_line(configs):
             sys.exit(1)
         elif opt == '--machines':
             configs['machines'] = arg
-        elif opt == '--benchmarks-dir':
-            configs['benchmarks-dir'] = arg
+        elif opt == '--benchmarks':
+            configs['benchmarks'] = arg
         elif opt == '--no-sync':
             configs['sync'] = 'no'
         elif opt == '--sync':
@@ -712,15 +724,15 @@ if __name__ == "__main__":
     if not configs.has_key('machines'):
         usage()
         err('\nERROR: Need file with machines!')
-    if not configs.has_key('benchmarks-dir'):
+    if not configs.has_key('benchmarks'):
         usage()
-        err('\nERROR: Need directory with benchmarks sets!')
+        err('\nERROR: Need directory or files with benchmarks sets!')
 
     tasks = get_machines(configs)
     do_sync(tasks, configs)
 
     try:
-        parse_sets(configs['benchmarks-dir'], tasks)
+        get_benchmarks(configs['benchmarks'], tasks)
     except KeyboardInterrupt:
         print('Stopping...')
 
@@ -731,7 +743,8 @@ if __name__ == "__main__":
             break;
 
     if not can_run:
-        err('Not benchmarks queued for running, is the directory right?')
+        err('Not benchmarks queued for running'
+            ', is the path to the benchmarks alright?')
 
     dispatcher = Dispatcher(configs, tasks)
     dispatcher.run()
