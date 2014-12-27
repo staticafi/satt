@@ -26,18 +26,14 @@
 #
 # On arran we have only python2, so use python2
 
-import sys
 import subprocess
 import select
 import fcntl
 import os
-import time
-import errno
-import glob
-import atexit
 
-from common import err
+from common import err, dbg
 from tasks import Task
+from configs import configs
 
 class RunningTask(object):
     """ This class represents ont running task """
@@ -66,11 +62,10 @@ class RunningTask(object):
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """
 
-    def __init__(self, configs, tasks = []):
+    def __init__(self, tasks = []):
         self._tasks = tasks
         self._poller = select.poll()
         self._fds = dict()
-        self._configs = configs
 
         # we must import it only localy, otherwise we get
         # cyclic dependency
@@ -79,7 +74,8 @@ class Dispatcher(object):
         if configs['no-db'] == 'yes':
             self._report = reporter.StdoutReporter()
         else:
-            self._report = reporter.MysqlReporter(configs)
+            print('MYSQL')
+            self._report = reporter.MysqlReporter()
 
     def add(self, task):
         """ Add new task """
@@ -114,7 +110,7 @@ class Dispatcher(object):
 
     def _expandVars(self, cmd):
         c = cmd[:]
-        for key, val in self._configs.items():
+        for key, val in configs.items():
             c = c.replace('{{{0}}}'.format(key), val)
 
         return c
@@ -122,7 +118,7 @@ class Dispatcher(object):
     def _runBenchmark(self, task):
         """ Run another benchmark from task """
 
-        cmd = self._expandVars(self._configs['remote-cmd'])
+        cmd = self._expandVars(configs['remote-cmd'])
         bench = task.runBenchmark(cmd)
         if bench is None: # no more tests to run
             return None
@@ -178,7 +174,7 @@ class Dispatcher(object):
     def run(self):
         """ Dispatch tasks over network and wait for outcomes """
 
-        print('[local] Started dispatching benchmarks')
+        dbg('[local] Started dispatching benchmarks')
 
         # take every task and call as many of benchmarks as
         # you are allowed. Later, when a task ends,

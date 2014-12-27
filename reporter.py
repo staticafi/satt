@@ -29,7 +29,9 @@
 import sys
 import os
 
-from common import err
+import configs
+
+from common import err, colored, dbg
 from dispatcher import RunningTask
 
 class BenchmarkReport(object):
@@ -109,25 +111,6 @@ class BenchmarkReport(object):
         except ValueError:
             rb.output += 'TIME CONSUMED: {0}\n'.format(msg)
 
-
-def colored(msg, c = None):
-    isatty = os.isatty(sys.stdout.fileno())
-    if isatty and not c is None:
-        if c == 'red':
-            c = '\033[0;31m'
-        elif c == 'green':
-            c = '\033[0;32m'
-        elif c == 'gray':
-            c = '\033[0;30m'
-        elif c == 'blue':
-            c = '\033[1;34m'
-        elif c == 'yellow':
-            c = '\033[0;33m'
-
-        return "{0}{1}{2}".format(c, msg, '\033[0m')
-    else:
-        return msg
-
 class StdoutReporter(BenchmarkReport):
     """ Report results of benchmark to stdout """
 
@@ -167,8 +150,12 @@ class StdoutReporter(BenchmarkReport):
         sys.stdout.flush()
 
 class MysqlReporter(BenchmarkReport):
+    try:
+        import MySQLdb as db
+    except ImportError:
+        dbg('Do not have MySQLdb module')
 
-    def __init__(self, configs):
+    def __init__(self):
         # use this to print out what is happening
         self._stdout = StdoutReporter()
 
@@ -176,9 +163,10 @@ class MysqlReporter(BenchmarkReport):
             self._conn = db.connect('localhost', 'statica',
                                     'statica', 'statica')
             self._cursor = self._conn.cursor()
-        except _mysql.Error as e:
-            sys.stderr.write('{0}\n'.format(str(e)))
-            sys.exit(1)
+        except NameError: # we do not have MySQLdb module
+            err('Do not have MySQLdb module')
+        except db.Error as e:
+            err('{0}\n'.format(str(e)))
 
         self._db('SELECT VERSION()')
         ver = self._db_fetchone()
@@ -188,8 +176,7 @@ class MysqlReporter(BenchmarkReport):
         try:
             self._cursor.execute(query)
         except db.Error as e:
-            sys.stderr.write('Failed querying db {0}\n'.format(e.args[1]))
-            sys.exit(1)
+            err('Failed querying db {0}\n'.format(e.args[1]))
 
     def _db_fetchone(self):
         return self._cursor.fetchone()
@@ -198,7 +185,11 @@ class MysqlReporter(BenchmarkReport):
         return self._cursor.fetchall()
 
     def __del__(self):
-        self._conn.close()
+        try:
+            self._conn.close()
+        except AttributeError:
+            # this means that we do not have MySQLdb module
+            pass
 
     def done(self, rb):
         # print it after saving

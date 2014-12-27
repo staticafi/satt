@@ -31,6 +31,7 @@ import os
 
 from common import err, create_lockfile
 from dispatcher import RunningTask, Dispatcher
+from configs import configs
 
 BUFSIZE = 1024
 
@@ -78,7 +79,7 @@ def track_rsync_progress(stdout, msg):
                 print('... done')
                 done = True
 
-def rsync_runner_scripts(tasks, configs):
+def rsync_runner_scripts(tasks):
     print('[local] rsync symbiotic-benchmarks scripts')
 
     # XXX do it parallely (same as the tasks)
@@ -105,10 +106,10 @@ def rsync_runner_scripts(tasks, configs):
         track_rsync_progress(p.stdout, 'Synchronizing scripts (2) with {0}'
                              .format(t.getMachine()))
 
-def do_sync(tasks, configs):
+def do_sync(tasks):
     try:
         if configs['sync'] == 'yes':
-            rsync_runner_scripts(tasks, configs)
+            rsync_runner_scripts(tasks)
     except KeyboardInterrupt:
         print('Stopping...')
         sys.exit(0)

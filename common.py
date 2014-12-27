@@ -28,16 +28,35 @@ import errno
 import atexit
 import time
 
-debug_allowed = False
+from configs import configs
+
 LOCKFILE = '.satt-running.lock'
 
+def colored(msg, c = None):
+    isatty = os.isatty(sys.stdout.fileno())
+    if isatty and not c is None:
+        if c == 'red':
+            c = '\033[0;31m'
+        elif c == 'green':
+            c = '\033[0;32m'
+        elif c == 'gray':
+            c = '\033[0;30m'
+        elif c == 'blue':
+            c = '\033[1;34m'
+        elif c == 'yellow':
+            c = '\033[0;33m'
+
+        return "{0}{1}{2}".format(c, msg, '\033[0m')
+    else:
+        return msg
+
 def err(msg):
-    sys.stderr.write(msg + '\n')
+    sys.stderr.write(colored('ERR: {0}\n'.format(msg), 'red'))
     sys.exit(1)
 
 def dbg(msg):
-    if debug_allowed:
-        print('DBG: ', msg)
+    if configs['debug'] == 'yes':
+        print('DBG: {0}'.format(msg))
 
 def create_lockfile():
     try:

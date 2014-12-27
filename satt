@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     configs = parse_configs()
     # command line has higher priority
-    parse_command_line(configs)
+    parse_command_line()
 
     # we need at least machines and dir now
     if not configs.has_key('machines'):
@@ -48,8 +48,8 @@ if __name__ == "__main__":
         usage()
         err('\nERROR: Need directory or files with benchmarks sets!')
 
-    tasks = get_machines(configs)
-    do_sync(tasks, configs)
+    tasks = get_machines()
+    do_sync(tasks)
 
     try:
         get_benchmarks(configs['benchmarks'], tasks)
@@ -67,5 +67,5 @@ if __name__ == "__main__":
         err('No benchmarks queued for running'
             ', is the path to the benchmarks alright?')
 
-    dispatcher = Dispatcher(configs, tasks)
+    dispatcher = Dispatcher(tasks)
     dispatcher.run()

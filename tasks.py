@@ -104,8 +104,8 @@ class Task(object):
 def expand(path):
     return os.path.expanduser(os.path.expandvars(path))
 
-def get_machines(configs):
-    path = configs['machines']
+def get_machines():
+    path = configs.configs['machines']
 
     try:
         f = open(path, 'r')

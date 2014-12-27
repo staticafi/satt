@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 #
-# This script distributes task between computers. The task
-# is to be run the Symbiotic tool on given benchark.
-#
 # Copyright (c) 2014 Marek Chalupa
 # E-mail: statica@fi.muni.cz
 #
@@ -30,12 +27,10 @@ import sys
 import os
 import getopt
 
-from common import err, dbg, debug_allowed
-
 def usage():
     sys.stderr.write(
 """
-Usage: satt OPTS
+Usage: satt OPTS tool
 
 OPTS can be:
     --machines=file.txt             File with machines
@@ -44,24 +39,25 @@ OPTS can be:
     --sync=[yes/no]                 Whether to sync tool on remote machines
 
 For configuration is searched in name_of_tool.conf file.
-Command-line argument have higher priority
+Command-line argument have higher priority. Tool defaults to 'symbiotic'
 """)
 
 allowed_keys = ['tool-dir', 'remote-dir', 'benchmarks', 'machines',
                 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync', 'timeout',
                 'no-db']
 
+# fill in default values
+configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
+           'remote-cmd':'echo "ERROR: No command specified"',
+           'no-db':'no', 'debug':'no', 'tool':'symbiotic'}
 
 def parse_configs(path = 'symbiotic.conf'):
-    # fill in default values
-    conf = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
-            'remote-cmd':'echo "ERROR: No command specified"',
-            'no-db':'no'}
+    from common import err, dbg
 
     if os.path.exists(path):
         print('Using config file {0}'.format(path))
     else:
-        return conf
+        return configs
 
     try:
         f = open(path, 'r')
@@ -79,13 +75,15 @@ def parse_configs(path = 'symbiotic.conf'):
         val = val.strip()
 
         if key in allowed_keys:
-            conf[key] = val
+            configs[key] = val
         else:
             err('Unknown config key: {0}'.format(key))
 
-    return conf
+    return configs
 
-def parse_command_line(configs):
+def parse_command_line():
+    from common import err, dbg
+
     try:
         opts, args = getopt.getopt(sys.argv[1:], '',
                                   ['help', 'machines=', 'benchmarks=',
@@ -108,10 +106,16 @@ def parse_command_line(configs):
         elif opt == '--no-db':
             configs['no-db'] = 'yes'
         elif opt == '--debug':
-            debug_allowed = True
+            configs['debug'] = 'yes'
         else:
             err('Unknown switch {0}'.format(opt))
 
-    if args:
+    if len(args) > 1:
         usage()
         sys.exit(1)
+    elif len(args) == 1:
+        configs['tool'] = args[0]
+
+    # print debug
+    for l, r in configs.items():
+        dbg('{0} = {1}'.format(l, r))
