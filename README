@@ -1,5 +1,7 @@
-symbiotic-benchmarks
+satt
 ----------------------------------------
 
-Run symbiotic tool on SV-COMP benchmarks parallely
+Run static analysis tools on SV-COMP benchmarks parallely
 on more computers.
+
+statica@fi.muni.cz
