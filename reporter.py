@@ -149,12 +149,12 @@ class StdoutReporter(BenchmarkReport):
 
         sys.stdout.flush()
 
-class MysqlReporter(BenchmarkReport):
-    try:
-        import MySQLdb as db
-    except ImportError:
-        dbg('Do not have MySQLdb module')
+try:
+    import MySQLdb as db
+except ImportError:
+    dbg('Do not have MySQLdb module')
 
+class MysqlReporter(BenchmarkReport):
     def __init__(self):
         # use this to print out what is happening
         self._stdout = StdoutReporter()
