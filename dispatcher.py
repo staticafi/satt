@@ -62,7 +62,7 @@ class RunningTask(object):
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """
 
-    def __init__(self, tasks = []):
+    def __init__(self, tasks = [], report = None):
         self._tasks = tasks
         self._poller = select.poll()
         self._fds = dict()
@@ -71,11 +71,13 @@ class Dispatcher(object):
         # cyclic dependency
         import reporter
 
-        if configs['no-db'] == 'yes':
-            self._report = reporter.StdoutReporter()
+        if report is None:
+            if configs['no-db'] == 'yes':
+                self._report = reporter.StdoutReporter()
+            else:
+                self._report = reporter.MysqlReporter()
         else:
-            print('MYSQL')
-            self._report = reporter.MysqlReporter()
+            self._report = report
 
     def add(self, task):
         """ Add new task """
@@ -185,7 +187,7 @@ class Dispatcher(object):
                     if self._runBenchmark(task) is None:
                         break
 
-        # monitor the tasks
+            # monitor the tasks
             self._monitorTasks()
         except KeyboardInterrupt:
             self._killTasks()

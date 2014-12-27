@@ -29,82 +29,76 @@ import select
 import fcntl
 import os
 
-from common import err, create_lockfile
-from dispatcher import RunningTask, Dispatcher
+from common import err, dbg, colored
+from dispatcher import Dispatcher
 from configs import configs
+from reporter import BenchmarkReport
 
-BUFSIZE = 1024
+class SyncReporter(BenchmarkReport):
+    def done(self, rb):
+        mach = rb.task.getMachine()
+        name = rb.name
 
-def track_rsync_progress(stdout, msg):
-    poll = select.poll()
-    stdout_fd = stdout.fileno()
+        print('{0} {1} - {2}: Done'.format(rb.category, mach,
+                                           os.path.basename(name)))
 
-    flags = fcntl.fcntl(stdout_fd, fcntl.F_GETFL)
-    fcntl.fcntl(stdout_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+        if rb.output:
+            print(colored(rb.output, 'blue'))
 
-    poll.register(stdout_fd, select.POLLIN |
-                  select.POLLERR | select.POLLHUP)
+        sys.stdout.flush()
 
-    def get_progress(str):
-        sp = str.rindex(' ')
-        r = str[sp:]
-        vals = r.split('=', 1)
-        if vals[0].strip() != 'to-check':
-            raise ValueError('Not to-check line')
+class SyncDispatcher(Dispatcher):
 
-        return vals[1][:-2]
+    def __init__(self, tasks):
+        Dispatcher.__init__(self, tasks, SyncReporter())
+        self.cmd = self._expandVars('rsync {file} '
+                                    '{ssh-user}@{machine}:{remote-dir}/satt')
 
-    done = False
-    while not done:
-        for fd, flags in poll.poll():
-            if flags & select.POLLERR:
-                err('Tracing rsync output')
+        # create remote directory if it does not exists
+        for t in tasks:
+            m = '{0}@{1}'.format(configs['ssh-user'], t.getMachine())
 
-            if flags & select.POLLIN:
-                try:
-                    data = stdout.readline()
-                    while data:
-                        try:
-                            x = get_progress(data)
-                            sys.stdout.write('\r{0}: {1} '. format(msg, x))
-                            sys.stdout.flush()
-                        except ValueError:
-                            pass
-                        data = stdout.readline()
-                except IOError:
-                    continue
+            dbg('Creating remote directory on {0}'.format(t.getMachine()))
+            subprocess.call(['ssh', m,
+                            'mkdir', '-p',
+                            '{0}/satt'.format(configs['remote-dir'])])
 
-            if flags & select.POLLHUP:
-                poll.unregister(fd)
-                print('... done')
-                done = True
+    # do the same as dispatcher, but run cmd instead
+    # of remote-cmd
+    def _runBenchmark(self, task):
+        bench = task.runBenchmark(self.cmd)
+        if bench is None:
+            return None
+
+        self._registerBenchmark(bench)
+
+        return bench
+
+    def changeCmd(self, cmd):
+        self.cmd = self._expandVars(cmd)
+
+def assign_tasks(tasks):
+    for t in tasks:
+        t.add(('run_benchmark', 'Syncing'))
+        t.add(('run_on_benchmark.sh', 'Syncing'))
 
 def rsync_runner_scripts(tasks):
-    print('[local] rsync symbiotic-benchmarks scripts')
+    dbg('local: rsync satt scripts')
 
-    # XXX do it parallely (same as the tasks)
-    for t in tasks:
-        p = subprocess.Popen(['rsync', '-rRzEm', '--progress',
-                             './run_on_benchmark.sh',
-                             '{0}@{1}:{2}/symbiotic-benchmarks/'
-                             .format(configs['ssh-user'], t.getMachine(),
-                             configs['remote-dir'])],
-                             bufsize = BUFSIZE, stdout = subprocess.PIPE,
-                             stderr = subprocess.STDOUT)
+    assign_tasks(tasks)
 
-        track_rsync_progress(p.stdout, 'Synchronizing scripts (1) with {0}'
-                             .format(t.getMachine()))
+    d = SyncDispatcher(tasks)
+    d.run()
 
-        p = subprocess.Popen(['rsync', '-rRzEm', '--progress',
-                             './run_benchmark',
-                             '{0}@{1}:{2}/symbiotic-benchmarks/'
-                             .format(configs['ssh-user'], t.getMachine(),
-                             configs['remote-dir'])],
-                             bufsize = BUFSIZE, stdout = subprocess.PIPE,
-                             stderr = subprocess.STDOUT)
+    # run user's custom command if he wants
+    if configs.has_key('sync-cmd'):
+        dbg('Running sync-cmd')
+        d.changeCmd(configs['sync-cmd'])
 
-        track_rsync_progress(p.stdout, 'Synchronizing scripts (2) with {0}'
-                             .format(t.getMachine()))
+        for t in tasks:
+            t.add(('sync-cmd', 'Syncing'))
+
+        d.run()
 
 def do_sync(tasks):
     try:

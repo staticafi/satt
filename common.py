@@ -55,7 +55,7 @@ def err(msg):
     sys.exit(1)
 
 def dbg(msg):
-    if configs['debug'] == 'yes':
+    if msg and configs['debug'] == 'yes':
         print('DBG: {0}'.format(msg))
 
 def create_lockfile():

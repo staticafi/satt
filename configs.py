@@ -44,7 +44,7 @@ Command-line argument have higher priority. Tool defaults to 'symbiotic'
 
 allowed_keys = ['tool-dir', 'remote-dir', 'benchmarks', 'machines',
                 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync', 'timeout',
-                'no-db']
+                'no-db', 'sync-cmd']
 
 # fill in default values
 configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',

@@ -92,9 +92,10 @@ class Task(object):
         # expand them
         ecmd = cmd.replace('{machine}', self._machine)
         ecmd = ecmd.replace('{benchmark}', name)
+        # {file} is a synonym to {benchmarks}
+        ecmd = ecmd.replace('{file}', name)
 
-        dbg('local: running {0}:{1}'.format(self._machine,
-                                            os.path.basename(name)))
+        dbg('running: {0}'.format(ecmd))
         p = subprocess.Popen(ecmd, Task.BUFSIZE, shell = True,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.STDOUT)
