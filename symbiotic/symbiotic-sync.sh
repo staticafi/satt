@@ -2,7 +2,7 @@
 
 # Sync script that satt needs for running Symbiotic
 
-function sync_symbiotic()
+sync_symbiotic()
 {
 	MACHINE="$1"
 	REMOTE_DIR="$2"
@@ -10,7 +10,7 @@ function sync_symbiotic()
 
 	USER=${MACHINE%%@*}
 	HOST=`hostname`
-	GIT_REP="ssh://$USER@$HOSTNAME/$SYMBIOTIC_DIR"
+	GIT_REP="ssh://$USER@$HOST/$SYMBIOTIC_DIR"
 
 	ssh "$MACHINE"\
 		"cd ${REMOTE_DIR};\
@@ -19,7 +19,7 @@ function sync_symbiotic()
 			else git clone $GIT_REP; fi"
 }
 
-function sendfile()
+sendfile()
 {
 	FILE="$1"
 	rsync -r "$FILE" "$MACHINE":"$REMOTE_DIR"/satt/symbiotic/ || exit 1

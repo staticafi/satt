@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # synchronize benchmarks repository
-function sync_benchmarks()
+sync_benchmarks()
 {
 	MACHINE="$1"
 	REMOTE_DIR="$2"
@@ -9,7 +9,7 @@ function sync_benchmarks()
 
 	USER=${MACHINE%%@*}
 	HOST=`hostname`
-	GIT_REP="ssh://$USER@$HOSTNAME/$BENCHMARKS_DIR"
+	GIT_REP="ssh://$USER@$HOST/$BENCHMARKS_DIR"
 
 	ssh "$MACHINE"\
 		"cd ${REMOTE_DIR};\
