@@ -15,7 +15,7 @@ sync_symbiotic()
 	ssh "$MACHINE"\
 		"cd ${REMOTE_DIR};\
 		 if cd symbiotic &>/dev/null;\
-			then git pull;\
+			then git pull &>/dev/null;\
 			else git clone $GIT_REP; fi"
 }
 
