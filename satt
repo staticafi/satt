@@ -36,8 +36,12 @@ if __name__ == "__main__":
     if not create_lockfile():
         err('Another instance of satt is running')
 
-    configs = parse_configs()
-    # command line has higher priority
+    tool = parse_command_line()
+    configs = parse_configs('{0}/config'.format(tool))
+
+    # options from command line are of higher priority
+    # so rewrite the options from parse_configs()
+    # XXX do it in some better way, this is a fast workaround
     parse_command_line()
 
     # we need at least machines and dir now

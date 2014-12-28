@@ -29,7 +29,7 @@ import select
 import fcntl
 import os
 
-from common import err, dbg, colored
+from common import err, dbg, colored, expand
 from dispatcher import Dispatcher
 from configs import configs
 from reporter import BenchmarkReport
@@ -77,12 +77,28 @@ class SyncDispatcher(Dispatcher):
     def changeCmd(self, cmd):
         self.cmd = self._expandVars(cmd)
 
+def add_files_from_dir(task, dirpath):
+    edirpath = expand(dirpath)
+
+    try:
+        files = os.listdir(edirpath)
+    except OSError as e:
+        err('Failed opening dir with benchmarks ({0}): {1}'
+            .format(edirpath, e.strerror))
+
+    for f in files:
+        if f == 'config':
+            continue
+
+        task.add(('{0}/{1}'.format(dirpath, f), 'Syncing'))
+
 def assign_tasks(tasks):
     for t in tasks:
-        t.add(('run_benchmark', 'Syncing'))
-        t.add(('run_on_benchmark.sh', 'Syncing'))
+        # look for files in directory named the same as
+        # the tool
+        add_files_from_dir(t, configs['tool'])
 
-def rsync_runner_scripts(tasks):
+def rsync_tool_runner(tasks):
     dbg('local: rsync satt scripts')
 
     assign_tasks(tasks)
@@ -103,7 +119,7 @@ def rsync_runner_scripts(tasks):
 def do_sync(tasks):
     try:
         if configs['sync'] == 'yes':
-            rsync_runner_scripts(tasks)
+            rsync_tool_runner(tasks)
     except KeyboardInterrupt:
         print('Stopping...')
         sys.exit(0)

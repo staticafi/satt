@@ -58,6 +58,9 @@ def dbg(msg):
     if msg and configs['debug'] == 'yes':
         print('DBG: {0}'.format(msg))
 
+def expand(path):
+    return os.path.expanduser(os.path.expandvars(path))
+
 def create_lockfile():
     try:
         fd = os.open(LOCKFILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)

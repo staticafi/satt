@@ -36,7 +36,7 @@ import glob
 import atexit
 import getopt
 
-from common import err, dbg
+from common import err, dbg, expand
 import configs
 
 class Task(object):
@@ -101,9 +101,6 @@ class Task(object):
                              stderr = subprocess.STDOUT)
 
         return RunningTask(cmd, p, self, name, cat)
-
-def expand(path):
-    return os.path.expanduser(os.path.expandvars(path))
 
 def get_machines():
     path = configs.configs['machines']

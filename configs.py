@@ -51,7 +51,7 @@ configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'remote-cmd':'echo "ERROR: No command specified"',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic'}
 
-def parse_configs(path = 'symbiotic.conf'):
+def parse_configs(path = 'symbiotic/config'):
     from common import err, dbg
 
     if os.path.exists(path):
@@ -119,3 +119,5 @@ def parse_command_line():
     # print debug
     for l, r in configs.items():
         dbg('{0} = {1}'.format(l, r))
+
+    return configs['tool']
