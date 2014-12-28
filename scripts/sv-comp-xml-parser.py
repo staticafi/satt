@@ -26,11 +26,17 @@ import os
 
 from xml.dom import minidom as mdom
 
+def err(msg):
+    sys.stderr.write('ERR: {0}\n'.format(msg))
+    sys.exit(1)
+
+try:
+    import MySQLdb as db
+except ImportError:
+    err('Do not have MySQLdb module')
+
 class Result(object):
     def __init__(self, name):
-        #init myslq
-
-
         self.name = name
 
         self.tool = None
@@ -42,6 +48,20 @@ class Result(object):
         self.correct = None
         self.cpuTime = None
         self.memUsage = None
+
+        try:
+            self._conn = db.connect('localhost', 'statica',
+                                    'statica', 'statica')
+        except db.Error as e:
+            err('{0}\n'.format(str(e)))
+
+        # check if we're connected to the db
+        # if not, the method will yield an error
+        self._db('SELECT VERSION()')
+
+    def __del__(self):
+        self._conn.close()
+        del self
 
     def check(self):
         assert not self.name is None
@@ -84,15 +104,56 @@ resources: {8}, {9} MB
     def dump(self):
         print(self.__str__())
 
+    def _db(self, query):
+        print(query)
+        try:
+            cur = self._conn.cursor()
+            cur.execute(query)
+            ret = cur.fetchall()
+            cur.close()
+        except db.Error as e:
+            err(str(e))
+
+        return ret
+
     def updateDb(self):
         "Check if tool is in the database and put it there if it is not"
-        pass
+
+        # I don't want to catch exceptions and check if we have duplicate rows
+        # so just query the db and insert only if we do not have the row
+        q = 'SELECT count(id) FROM years WHERE year = {0}'.format(self.year)
+        res = self._db(q)
+        if res[0][0] == 0:
+            q = 'INSERT INTO years (year, created_at, updated_at) '\
+            'VALUES(\'{0}\', \'{1}\',\'{2}\');'.format(self.year, self.date, self.date)
+
+            # add year if we do not have this one
+            self._db(q)
+
+        res = self._db('SELECT id FROM years WHERE year = {0};'.format(self.year))
+        year_id = res[0][0]
+
+        q = """
+        SELECT year_id FROM categories
+        WHERE name = '{0}' and year_id = {1};
+        """.format(self.category, year_id)
+        res = self._db(q)
+        if not res:
+            # add category if we do not have it
+            q = """
+            INSERT INTO categories (name, year_id, created_at, updated_at)
+            VALUES('{0}', '{1}', '{2}', '{3}');
+            """.format(self.category, year_id, self.date, self.date)
+            self._db(q)
+
+        self._conn.commit()
 
     def store(self):
         "Store result in the database"
         self.updateDb()
 
         pass
+        self._conn.commit()
 
 
 def parse_sourcefile(sf):
@@ -160,3 +221,4 @@ if __name__ == "__main__":
         r.version = version
 
         r.check()
+        r.store()
