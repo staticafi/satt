@@ -43,7 +43,9 @@ class SyncReporter(BenchmarkReport):
                                            os.path.basename(name)))
 
         if rb.output:
-            print(colored(rb.output, 'blue'))
+            # if there's any output, it is probably an error,
+            # so write it out in red color
+            print(colored(rb.output, 'red'))
 
         sys.stdout.flush()
 
@@ -51,10 +53,9 @@ class SyncDispatcher(Dispatcher):
 
     def __init__(self, tasks):
         Dispatcher.__init__(self, tasks, SyncReporter())
-        self.cmd = self._expandVars('rsync {file} '
-                                    '{ssh-user}@{machine}:{remote-dir}/satt')
 
         # create remote directory if it does not exists
+        # this create remote-dir and remote-dir/satt
         for t in tasks:
             m = '{0}@{1}'.format(configs['ssh-user'], t.getMachine())
 
@@ -63,10 +64,11 @@ class SyncDispatcher(Dispatcher):
                             'mkdir', '-p',
                             '{0}/satt'.format(configs['remote-dir'])])
 
-    # do the same as dispatcher, but run cmd instead
+    # do the same as dispatcher, but run sync-cmd instead
     # of remote-cmd
     def _runBenchmark(self, task):
-        bench = task.runBenchmark(self.cmd)
+        cmd = self._expandVars(configs['sync-cmd'])
+        bench = task.runBenchmark(cmd)
         if bench is None:
             return None
 
@@ -74,47 +76,23 @@ class SyncDispatcher(Dispatcher):
 
         return bench
 
-    def changeCmd(self, cmd):
-        self.cmd = self._expandVars(cmd)
-
-def add_files_from_dir(task, dirpath):
-    edirpath = expand(dirpath)
-
-    try:
-        files = os.listdir(edirpath)
-    except OSError as e:
-        err('Failed opening dir with benchmarks ({0}): {1}'
-            .format(edirpath, e.strerror))
-
-    for f in files:
-        if f == 'config':
-            continue
-
-        task.add(('{0}/{1}'.format(dirpath, f), 'Syncing'))
-
-def assign_tasks(tasks):
+def add_tasks(tasks):
     for t in tasks:
-        # look for files in directory named the same as
-        # the tool
-        add_files_from_dir(t, configs['tool'])
+        # we need to add at least one path so that
+        # the dispatcher can dispatch something.
+        t.add((configs['tool'], 'synchronizing'))
 
 def rsync_tool_runner(tasks):
     dbg('local: rsync satt scripts')
 
-    assign_tasks(tasks)
+    if not configs.has_key('sync-cmd'):
+        dbg('No sync command')
+        return
+
+    add_tasks(tasks)
 
     d = SyncDispatcher(tasks)
     d.run()
-
-    # run user's custom command if he wants
-    if configs.has_key('sync-cmd'):
-        dbg('Running sync-cmd')
-        d.changeCmd(configs['sync-cmd'])
-
-        for t in tasks:
-            t.add(('sync-cmd', 'Syncing'))
-
-        d.run()
 
 def do_sync(tasks):
     try:
