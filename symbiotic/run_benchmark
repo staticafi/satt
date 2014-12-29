@@ -40,6 +40,19 @@ def printMemoryUsage():
     print(maxrss)
     sys.stdout.flush()
 
+def printVersions(symbiotic_dir):
+    version = ''
+    f = open(os.path.join(symbiotic_dir, 'LLVM_SLICER_VERSION'), 'r')
+    version += 'slicer:{0}'.format(f.readline().strip())
+    f.close()
+
+    f = open(os.path.join(symbiotic_dir, 'SVC_SCRIPTS_VERSION'), 'r')
+    version += '-scripts:{0}'.format(f.readline().strip())
+    f.close()
+
+    print('=== VERSIONS')
+    print(version)
+
 if __name__ == "__main__":
     symbiotic_dir = sys.argv[1]
     benchmark = sys.argv[2]
@@ -47,6 +60,8 @@ if __name__ == "__main__":
 
     # kill all subprocesses if there are any on exit
     atexit.register(lambda: os.kill(0, signal.SIGKILL))
+
+    printVersions(symbiotic_dir)
 
     start_timeout(timeout)
 

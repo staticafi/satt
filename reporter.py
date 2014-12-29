@@ -28,6 +28,7 @@
 
 import sys
 import os
+import time
 
 import configs
 
@@ -77,6 +78,8 @@ class BenchmarkReport(object):
         raise NotImplementedError("Child class needs to override this method")
 
     def result(self, rb, msg):
+        msg = msg.upper()
+
         if msg == 'TIMEOUT':
             rb.result = 'TIMEOUT'
         elif msg == 'FALSE':
@@ -91,6 +94,9 @@ class BenchmarkReport(object):
             rb.output += 'RESULT: {0}\n'.format(msg)
 
     def versions(self, rb, msg):
+            if rb.versions is None:
+                rb.versions = ''
+
             rb.versions += '{0}\n'.format(msg)
 
     def memoryUsage(self, rb, msg):
@@ -107,7 +113,7 @@ class BenchmarkReport(object):
             if not rb.time is None:
                 raise ValueError('Time already set')
 
-            rb.time = int(msg)
+            rb.time = float(msg)
         except ValueError:
             rb.output += 'TIME CONSUMED: {0}\n'.format(msg)
 
@@ -168,21 +174,19 @@ class MysqlReporter(BenchmarkReport):
         except db.Error as e:
             err('{0}\n'.format(str(e)))
 
-        self._db('SELECT VERSION()')
-        ver = self._db_fetchone()
-        print('Connected to database: MySQL version {0}'.format(*ver))
+        ver = self._db('SELECT VERSION()')[0][0]
+        print('Connected to database: MySQL version {0}'.format(ver))
 
     def _db(self, query):
+        ret = None
+
         try:
             self._cursor.execute(query)
+            ret = self._cursor.fetchall()
         except db.Error as e:
             err('Failed querying db {0}\n'.format(e.args[1]))
 
-    def _db_fetchone(self):
-        return self._cursor.fetchone()
-
-    def _db_fetchall(self):
-        return self._cursor.fetchall()
+        return ret
 
     def __del__(self):
         try:
@@ -191,10 +195,153 @@ class MysqlReporter(BenchmarkReport):
             # this means that we do not have MySQLdb module
             pass
 
+    def _commit(self):
+        self._conn.commit()
+
+    def _updateDb(self, rb):
+        def get_params(p):
+            if p is None:
+                return ''
+
+            return p
+
+        ver = rb.versions.strip()
+
+        # If tool that runs in this run is not known to database, add it
+        q = """
+        SELECT id FROM tools WHERE name = '{0}' and version = '{1}';
+        """.format(configs.configs['tool'], ver)
+        res = self._db(q)
+        if not res:
+            tm = time.strftime('%y-%m-%d %H:%M')
+            q2 = """
+            INSERT INTO tools
+            (name, year_id, version, params, created_at, updated_at)
+            VALUES('{0}', '(SELECT id FROM years WHERE year = {1})',
+                   '{2}', '{3}', '{4}', '{5}');
+            """.format(configs.configs['tool'], configs.configs['year'],
+                       ver, get_params(rb.params), tm, tm)
+            self._db(q2)
+
+            # get new tool_id
+            res = self._db(q)
+            assert len(res) == 1
+
+        tool_id = res[0][0]
+
+        return tool_id
+
     def done(self, rb):
         # print it after saving
         self._stdout.done(rb)
 
-        #query = 'SELECT id, category_id from tasks where name = \'{0}\''.format(
-        #        rb.name[pos + 1:])
-        #self._db(query)
+        def get_name(name):
+            n = 0
+            i = len(name) - 1
+            while i  >= 0:
+                if name[i] == '/':
+                    n += 1
+
+                    if n == 2:
+                        break
+
+                i -= 1
+
+            return name[i + 1:]
+
+        def dumpToFile(rb, msg = None):
+            fname = '{0}.{1}.{2}.log'.format(
+                     configs.configs['tool'], os.path.basename(rb.name),
+                     time.strftime('%y-%m-%d-%H-%M-%s'))
+            f = open(fname, 'w')
+
+            if msg:
+                f.write('Reason: {0}'.format(msg))
+            f.write('category: {0}\n'.format(rb.category))
+            f.write('name: {0}\n\n'.format(rb.name))
+            f.write('cmd: {0}\n'.format(rb.cmd))
+            f.write('params: {0}\n'.format(rb.params))
+            f.write('versions: {0}\n'.format(rb.versions))
+            f.write('result: {0}\n'.format(rb.result))
+            f.write('memUsage: {0}\n'.format(rb.memory))
+            f.write('cpuUsage: {0}s\n\n'.format(rb.time))
+            f.write('other output:\n{0}\n'.format(rb.output))
+
+            f.close()
+
+        def is_correct(res1, res2):
+            if res1.upper() == res2.upper():
+                return 1
+
+            return 0
+
+        def points(ok, res):
+            res = res.lower()
+
+            if res == 'unknown' or res == 'error' or res == 'timeout':
+                return 0
+            elif res == 'false':
+                if ok:
+                    return 1
+                else:
+                    return -6
+            elif res == 'true':
+                if ok:
+                    return 2
+                else:
+                    return -12
+            else:
+                dbg('Unknown result, skipping points')
+                return 0
+
+        def None2Zero(x):
+            if x is None:
+                return 0
+            return x
+
+        tool_id = self._updateDb(rb)
+
+        q = """
+        SELECT id FROM categories
+        WHERE
+            year_id = (SELECT id FROM years WHERE year = {0}) and
+            name = '{1}';
+        """.format(configs.configs['year'], rb.category)
+        res = self._db(q)
+        if not res:
+            dumpToFile(rb, 'Do not have given category')
+            return
+
+        assert len(res) == 1
+        cat_id = res[0][0]
+
+        q = """
+        SELECT id, correct_result FROM tasks WHERE name = '{0}' and category_id = '{1}';
+        """.format(get_name(rb.name), cat_id)
+        res = self._db(q)
+
+        # we do not have such a task??
+        if not res:
+            dumpToFile(rb, 'Do not have given task')
+            return
+
+        assert len(res) == 1
+        task_id = res[0][0]
+        correct_result = res[0][1]
+
+        ic = is_correct(correct_result, rb.result)
+        tm = time.strftime('%y-%m-%d %H:%M')
+
+        q = """
+        INSERT INTO task_results
+        (tool_id, task_id, result, is_correct, points, cpu_time,
+         memory_usage, created_at, updated_at)
+        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}')
+        """.format(tool_id, task_id, rb.result.lower(),
+                   is_correct(correct_result, rb.result),
+                   points(ic, rb.result), None2Zero(rb.time),
+                   None2Zero(rb.memory), tm, tm)
+        self._db(q)
+
+        self._commit()
+

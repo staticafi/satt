@@ -2,10 +2,11 @@
 
 ssh-cmd = /usr/bin/ssh
 ssh-user = statica
-tool-dir = ~/symbiotic/symbiotic
+tool-dir = ~/symbiotic
 remote-dir = ~
 
 # set of benchmarks
+year = 2015
 benchmarks = ~/benchmarks
 
 # list of machines
