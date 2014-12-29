@@ -161,14 +161,17 @@ def assign_set(dirpath, path, tasks):
 
         n = 0
         for it in glob.iglob(line):
-            tasks[n % num].add(('benchmarks/{0}'.format(it), cat))
+            tasks[n % num].add(('benchmarks/{0}/{1}'.format(
+                                 configs.configs['year'], it), cat))
             n += 1
 
     f.close()
     os.chdir(old_dir)
 
 def assign_set_dir(dirpath, tasks):
+    dirpath = '{0}/{1}'.format(dirpath, configs.configs['year'])
     edirpath = os.path.expanduser(dirpath)
+    dbg('Looking for benchmarks in: {0}'.format(edirpath))
 
     try:
         files = os.listdir(edirpath)
