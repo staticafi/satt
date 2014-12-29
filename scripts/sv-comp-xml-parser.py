@@ -111,7 +111,6 @@ resources: {8}, {9} MB
         print(self.__str__())
 
     def _db(self, query):
-        print(query)
         try:
             self._cursor.execute(query)
             ret = self._cursor.fetchall()
@@ -254,8 +253,6 @@ resources: {8}, {9} MB
     def store(self):
         "Store result in the database"
         tool_id, task_id = self.updateDb()
-        print(tool_id, task_id)
-
         assert self.check()
 
         def is_correct(x):
@@ -274,8 +271,8 @@ resources: {8}, {9} MB
         self._db(q)
 
     def commit(self):
+        print('Commited: {0} - {1} - {2}'.format(self.tool, self.category, self.name))
         self._conn.commit()
-
 
 def parse_sourcefile(sf):
     #print('Not handled attrs: options')
@@ -324,7 +321,7 @@ if __name__ == "__main__":
     year = 2000 + int(parts[3][-2:])
     cat = parts[4]
     if cat == 'xml':
-        cat == 'Overall'
+        cat = 'Overall'
 
     doc = mdom.parse(f)
     res = doc.getElementsByTagName('result')[0]
