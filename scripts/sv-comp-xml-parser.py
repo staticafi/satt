@@ -40,6 +40,7 @@ class Result(object):
         self.name = name
 
         self.tool = None
+        self.params = None
         self.version = None
         self.year = None
         self.date = None
@@ -52,6 +53,7 @@ class Result(object):
         try:
             self._conn = db.connect('localhost', 'statica',
                                     'statica', 'statica')
+            self._cursor = self._conn.cursor()
         except db.Error as e:
             err('{0}\n'.format(str(e)))
 
@@ -60,6 +62,7 @@ class Result(object):
         self._db('SELECT VERSION()')
 
     def __del__(self):
+        self._cursor.close()
         self._conn.close()
         del self
 
@@ -85,10 +88,13 @@ class Result(object):
             err = True
         elif self.memUsage is None:
             err = True
+        # self.param can be None
 
         if err:
             print('Check error >>')
             self.dump()
+
+        return not err
 
     def __str__(self):
         return """
@@ -107,10 +113,8 @@ resources: {8}, {9} MB
     def _db(self, query):
         print(query)
         try:
-            cur = self._conn.cursor()
-            cur.execute(query)
-            ret = cur.fetchall()
-            cur.close()
+            self._cursor.execute(query)
+            ret = self._cursor.fetchall()
         except db.Error as e:
             err(str(e))
 
@@ -118,6 +122,12 @@ resources: {8}, {9} MB
 
     def updateDb(self):
         "Check if tool is in the database and put it there if it is not"
+
+        assert self.check()
+
+        ###
+        # Update years table
+        ###
 
         # I don't want to catch exceptions and check if we have duplicate rows
         # so just query the db and insert only if we do not have the row
@@ -133,26 +143,137 @@ resources: {8}, {9} MB
         res = self._db('SELECT id FROM years WHERE year = {0};'.format(self.year))
         year_id = res[0][0]
 
+        ###
+        # Update categories table
+        ###
+
+        category_id = None
+
         q = """
-        SELECT year_id FROM categories
+        SELECT id FROM categories
         WHERE name = '{0}' and year_id = {1};
         """.format(self.category, year_id)
         res = self._db(q)
         if not res:
             # add category if we do not have it
-            q = """
+            q2 = """
             INSERT INTO categories (name, year_id, created_at, updated_at)
             VALUES('{0}', '{1}', '{2}', '{3}');
             """.format(self.category, year_id, self.date, self.date)
-            self._db(q)
+            self._db(q2)
 
-        self._conn.commit()
+            # get new category id
+            # XXX use executemany instead?
+            res = self._db(q)
+            assert len(res) == 1
+            category_id = res[0][0]
+
+        else:
+            assert len(res) == 1
+            category_id = res[0][0]
+
+        ###
+        # Update tools table
+        ###
+
+        tool_id = None
+
+        q = """
+        SELECT id FROM tools WHERE name = '{0}' and version = '{1}';
+        """.format(self.tool, self.version)
+        res = self._db(q)
+        # inconsistency in database (more rows for one version of a tool)
+        assert len(res) < 2
+
+        if not res:
+            # no tool of this name and version, add it!
+            q2 = """
+            INSERT INTO tools (name, year_id, version, params, created_at, updated_at)
+            VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}');
+            """.format(self.tool, year_id, self.version, self.params,
+                       self.date, self.date)
+            self._db(q2)
+
+            res = self._db(q)
+            assert len(res) == 1
+            tool_id = res[0][0]
+
+        else:
+            tool_id = res[0][0]
+
+        ###
+        # Update tasks
+        ###
+        def get_correct_result(name):
+            """
+            Returns 'true' or 'false' depending on what of these words
+            occurrs earlier in the name
+            """
+
+            ti = name.find('true')
+            fi = name.find('false')
+
+            # we must have either one or the other
+            assert ti != -1 or fi != -1
+
+            if ti == -1:
+                return 'false'
+            elif fi == -1:
+                return 'true'
+            else: # both of the words are in the name
+                if ti < fi:
+                    return 'true'
+                else:
+                    return 'false'
+
+        task_id = None
+        assert not category_id is None
+
+        q = """
+        SELECT id FROM tasks WHERE name = '{0}' and category_id = '{1}'
+        """.format(self.name, category_id)
+        res = self._db(q)
+        if res:
+            task_id = res[0][0]
+        else:
+            correct_result = get_correct_result(self.name)
+            q2 = """
+            INSERT INTO tasks
+            (name, category_id, correct_result, created_at, updated_at)
+            VALUES('{0}', '{1}', '{2}', '{3}', '{4}');
+            """.format(self.name, category_id, correct_result,
+                       self.date, self.date);
+            self._db(q2)
+
+            res = self._db(q)
+            assert len(res) == 1
+            task_id = res[0][0]
+
+        return (tool_id, task_id)
 
     def store(self):
         "Store result in the database"
-        self.updateDb()
+        tool_id, task_id = self.updateDb()
+        print(tool_id, task_id)
 
-        pass
+        assert self.check()
+
+        def is_correct(x):
+            if x == 'correct':
+                return 1
+
+            return 0
+
+        q = """
+        INSERT INTO task_results
+        (tool_id, task_id, result, is_correct, points,
+        cpu_time, memory_usage, created_at, updated_at)
+        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}');
+        """.format(tool_id, task_id, self.status, is_correct(self.correct),
+                   0, self.cpuTime, self.memUsage, self.date, self.date)
+        self._db(q)
+
+    def commit(self):
         self._conn.commit()
 
 
@@ -208,6 +329,7 @@ if __name__ == "__main__":
     doc = mdom.parse(f)
     res = doc.getElementsByTagName('result')[0]
     date = res.getAttribute('date')
+    params = res.getAttribute('options')
     version = res.getAttribute('version')
 
     sfs = doc.getElementsByTagName('sourcefile')
@@ -219,6 +341,11 @@ if __name__ == "__main__":
         r.category = cat
         r.date = date
         r.version = version
+        r.params = params
 
         r.check()
         r.store()
+
+        # commit only if everything went well
+        # (no error or exception aborted the script here)
+        r.commit()
