@@ -26,6 +26,7 @@
 import sys
 import os
 import getopt
+import time
 
 def usage():
     sys.stderr.write(
@@ -44,12 +45,13 @@ Command-line argument have higher priority. Tool defaults to 'symbiotic'
 
 allowed_keys = ['tool-dir', 'remote-dir', 'benchmarks', 'machines',
                 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync', 'timeout',
-                'no-db', 'sync-cmd']
+                'no-db', 'sync-cmd', 'year']
 
 # fill in default values
 configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'remote-cmd':'echo "ERROR: No command specified"',
-           'no-db':'no', 'debug':'no', 'tool':'symbiotic'}
+           'no-db':'no', 'debug':'no', 'tool':'symbiotic',
+           'year':time.strftime('%Y')}
 
 def parse_configs(path = 'symbiotic/config'):
     from common import err, dbg
@@ -87,7 +89,8 @@ def parse_command_line():
     try:
         opts, args = getopt.getopt(sys.argv[1:], '',
                                   ['help', 'machines=', 'benchmarks=',
-                                   'no-sync', 'no-db', 'sync=', 'debug'])
+                                   'no-sync', 'no-db', 'sync=', 'debug',
+                                   'year='])
     except getopt.GetoptError as e:
         err('{0}'.format(str(e)))
 
@@ -107,6 +110,8 @@ def parse_command_line():
             configs['no-db'] = 'yes'
         elif opt == '--debug':
             configs['debug'] = 'yes'
+        elif opt == '--year':
+            configs['year'] = arg
         else:
             err('Unknown switch {0}'.format(opt))
 
