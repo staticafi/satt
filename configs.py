@@ -28,24 +28,72 @@ import os
 import getopt
 import time
 
+allowed_keys = ['tool-dir', 'remote-dir', 'benchmarks', 'machines',
+                'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync', 'timeout',
+                'no-db', 'sync-cmd', 'year']
+
 def usage():
     sys.stderr.write(
 """
+Static analysis tools tester, 2014
+-------------------------------------
+
 Usage: satt OPTS tool
 
 OPTS can be:
     --machines=file.txt             File with machines
-    --benchmarks=dir_with_sets      Directory with sets of benchmarks
+    --benchmarks=dir/set_file       Directory with sets of benchmarks or set file
     --no-sync                       Do not sync tool on remote machines
     --sync=[yes/no]                 Whether to sync tool on remote machines
+    --debug                         Enable debugging messages
+    --no-db                         Do not store result to database
+    --year=[year]                   Specify year
 
-For configuration is searched in name_of_tool.conf file.
+These options can be specified in config file (except for 'debug' and 'no-db')
+
+Each tool is supposed to have its own directory with config files and
+scripts that will run the tool on remote computers. Basically, all that
+is needed is:
+tool_dir  \
+    config
+    remote_runner
+    remote_sync (optional)
+
+In config file, there are few keys that is searched for:
+tool-dir      -- directory that contains the tool
+remote-dir    -- where will we work on remote machines
+remote-cmd    -- command to run the test on remote computer. This command
+                 is run _localy_, so it will probably begin with: ssh user@{machine}
+timeout       -- timeout for tests
+sync-cmd      -- run this command before running tests to sync tool on remote
+                 computers
+year          -- specify year of sv-comp. The benchmarks will be searched for in
+                 {benchmarks}/{year}
+
+In configuration file can be comments (line begining with #) and in variables can
+be used another variables in {var} that will be expaneded. Example:
+
+tool-dir = tooler
+remote-dir = ~/{tool-dir}
+
+There are two special variables {benchmark} (synonym {file}) and {machine}
+that will expand to current benchmark file and remote machine.
+
 Command-line argument have higher priority. Tool defaults to 'symbiotic'
+
+Allowed keys in config file:
 """)
 
-allowed_keys = ['tool-dir', 'remote-dir', 'benchmarks', 'machines',
-                'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync', 'timeout',
-                'no-db', 'sync-cmd', 'year']
+    i = 0
+    for k in allowed_keys:
+        sys.stderr.write(k)
+
+        i += 1
+        if i % 3 == 0:
+            sys.stderr.write('\n')
+        else:
+            sys.stderr.write('\t')
+
 
 # fill in default values
 configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
