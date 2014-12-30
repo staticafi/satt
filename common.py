@@ -46,6 +46,9 @@ def colored(msg, c = None):
         elif c == 'yellow':
             c = '\033[0;33m'
 
+        elif c == 'red_bg':
+            c = '\033[0;30;41m'
+
         return "{0}{1}{2}".format(c, msg, '\033[0m')
     else:
         return msg

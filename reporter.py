@@ -129,7 +129,7 @@ class StdoutReporter(BenchmarkReport):
         f = rb.name.find('false')
 
         if rb.result == 'ERROR' or rb.result is None:
-            color = 'red'
+            color = 'red_bg'
         elif rb.result == 'UNKNOWN':
             color = 'yellow'
         elif rb.result == 'TRUE':
@@ -299,6 +299,12 @@ class MysqlReporter(BenchmarkReport):
                 return 0
             return x
 
+        def Empty2Null(x):
+            if x == '':
+                return 'NULL'
+
+            return '\'{0}\''.format(x)
+
         tool_id = self._updateDb(rb)
 
         q = """
@@ -335,12 +341,12 @@ class MysqlReporter(BenchmarkReport):
         q = """
         INSERT INTO task_results
         (tool_id, task_id, result, is_correct, points, cpu_time,
-         memory_usage, created_at, updated_at)
-        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}')
+         memory_usage, created_at, updated_at, output)
+        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', {9})
         """.format(tool_id, task_id, rb.result.lower(),
                    is_correct(correct_result, rb.result),
                    points(ic, rb.result), None2Zero(rb.time),
-                   None2Zero(rb.memory), tm, tm)
+                   None2Zero(rb.memory), tm, tm, Empty2Null(rb.output))
         self._db(q)
 
         self._commit()
