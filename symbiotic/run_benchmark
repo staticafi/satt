@@ -54,6 +54,9 @@ def printVersions(symbiotic_dir):
     print(version)
 
 if __name__ == "__main__":
+    if len(sys.argv) != 4:
+        print('Usage: run_benchmark symbiotic_dir benchmark timeout')
+
     symbiotic_dir = sys.argv[1]
     benchmark = sys.argv[2]
     timeout = int(sys.argv[3])
