@@ -26,6 +26,9 @@
 #
 # On arran we have only python2, so use python2
 
+from sys import argv
+from os import chdir
+from os.path import dirname
 from subprocess import Popen, PIPE
 
 from common import err, dbg, create_lockfile, colored
@@ -58,6 +61,10 @@ def remove_down_machines(tasks):
     return any_up
 
 if __name__ == "__main__":
+    # change working directory to the one with scripts
+    working_dir = dirname(argv[0])
+    chdir(working_dir)
+
     if not create_lockfile():
         err('Another instance of satt is running')
 
