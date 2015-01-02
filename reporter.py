@@ -104,7 +104,7 @@ class BenchmarkReport(object):
             if not rb.memory is None:
                 raise ValueError('Memory usage already set')
 
-            rb.memory = int(msg)
+            rb.memory = float(msg)
         except ValueError:
             rb.output += 'MEMORY USAGE: {0}\n'.format(msg)
 

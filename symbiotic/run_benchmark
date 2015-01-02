@@ -37,7 +37,7 @@ def printMemoryUsage():
     maxrss = getattr(us, 'ru_maxrss')
 
     print('=== MEMORY USAGE')
-    print(maxrss)
+    print(maxrss / 1024.0)
     sys.stdout.flush()
 
 def printVersions(symbiotic_dir):
