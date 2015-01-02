@@ -26,11 +26,36 @@
 #
 # On arran we have only python2, so use python2
 
-from common import err, create_lockfile
+from subprocess import Popen, PIPE
+
+from common import err, dbg, create_lockfile, colored
 from dispatcher import Dispatcher
 from sync import do_sync
 from configs import parse_configs, parse_command_line, usage
 from tasks import get_machines, get_benchmarks
+
+def remove_down_machines(tasks):
+    any_up = False
+    procs = list()
+    # run it parallely
+    for t in tasks:
+        p = Popen(['ping', '-c', '1', t.getMachine()],
+                  stdout=PIPE, stderr=PIPE, bufsize=1024)
+        procs.append((p, t))
+
+    for p, t in procs:
+        sout, serr = p.communicate()
+        if serr:
+            err(serr)
+
+        if p.returncode != 0:
+            print(colored('WARN: {0} is down'.format(t.getMachine()), 'red'))
+            tasks.remove(t)
+        else:
+            dbg('{0} is up'.format(t.getMachine()))
+            any_up = True
+
+    return any_up
 
 if __name__ == "__main__":
     if not create_lockfile():
@@ -53,6 +78,8 @@ if __name__ == "__main__":
         err('\nERROR: Need directory or files with benchmarks sets!')
 
     tasks = get_machines()
+    if not remove_down_machines(tasks):
+        err('No remote host is up, exiting...')
     do_sync(tasks)
 
     try:
