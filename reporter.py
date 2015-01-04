@@ -201,28 +201,23 @@ class MysqlReporter(BenchmarkReport):
         self._conn.commit()
 
     def _updateDb(self, rb):
-        def get_params(p):
-            if p is None:
-                return ''
-
-            return p
-
+        tool_params = 'timeout={0}'.format(configs.configs['timeout'])
         ver = rb.versions.strip()
 
         # If tool that runs in this run is not known to database, add it
         q = """
-        SELECT id FROM tools WHERE name = '{0}' and version = '{1}';
-        """.format(configs.configs['tool'], ver)
+        SELECT id FROM tools
+        WHERE name = '{0}' and version = '{1}' and params = '{2}';
+        """.format(configs.configs['tool'], ver, tool_params)
         res = self._db(q)
         if not res:
-            tm = time.strftime('%y-%m-%d %H:%M')
             q2 = """
             INSERT INTO tools
-            (name, year_id, version, params, created_at, updated_at)
-            VALUES('{0}', '(SELECT id FROM years WHERE year = {1})',
-                   '{2}', '{3}', '{4}', '{5}');
+            (name, year_id, version, params)
+            VALUES('{0}', (SELECT id FROM years WHERE year = {1}),
+                   '{2}', '{3}');
             """.format(configs.configs['tool'], configs.configs['year'],
-                       ver, get_params(rb.params), tm, tm)
+                       ver, tool_params)
             self._db(q2)
 
             # get new tool_id

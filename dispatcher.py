@@ -53,7 +53,6 @@ class RunningTask(object):
         self.versions = None
         self.memory = None
         self.time = None
-        self.params = None
 
         self._state = None # what are we just reading?
 
