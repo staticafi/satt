@@ -79,10 +79,10 @@ if __name__ == "__main__":
     # we need at least machines and dir now
     if not configs.has_key('machines'):
         usage()
-        err('\nERROR: Need file with machines!')
+        err('Need file with machines!')
     if not configs.has_key('benchmarks'):
         usage()
-        err('\nERROR: Need directory or files with benchmarks sets!')
+        err('Need directory or files with benchmarks sets!')
 
     tasks = get_machines()
     if not remove_down_machines(tasks):
