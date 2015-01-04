@@ -195,6 +195,8 @@ class MysqlReporter(BenchmarkReport):
             # this means that we do not have MySQLdb module
             pass
 
+        del self
+
     def _commit(self):
         self._conn.commit()
 
