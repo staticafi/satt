@@ -116,7 +116,7 @@ def get_machines():
 
     for line in f:
         line = line.strip()
-        if not line:
+        if not line or line[0] == '#':
             continue
 
         # parse machine and number of parallel processes
