@@ -90,7 +90,7 @@ def add_tasks(tasks):
         t.add((configs['tool'], 'synchronizing'))
 
 def rsync_tool_runner(tasks):
-    dbg('local: rsync satt scripts')
+    print('Synchronizing...')
 
     if not configs.has_key('sync-cmd'):
         dbg('No sync command')

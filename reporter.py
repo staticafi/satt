@@ -164,6 +164,8 @@ class MysqlReporter(BenchmarkReport):
     def __init__(self):
         # use this to print out what is happening
         self._stdout = StdoutReporter()
+        self.run_id = int(time.time())
+        self.tool_params = 'timeout={0}'.format(configs.configs['timeout'])
 
         try:
             self._conn = db.connect('localhost', 'statica',
@@ -201,14 +203,13 @@ class MysqlReporter(BenchmarkReport):
         self._conn.commit()
 
     def _updateDb(self, rb):
-        tool_params = 'timeout={0}'.format(configs.configs['timeout'])
         ver = rb.versions.strip()
 
         # If tool that runs in this run is not known to database, add it
         q = """
         SELECT id FROM tools
         WHERE name = '{0}' and version = '{1}' and params = '{2}';
-        """.format(configs.configs['tool'], ver, tool_params)
+        """.format(configs.configs['tool'], ver, self.tool_params)
         res = self._db(q)
         if not res:
             q2 = """
@@ -217,7 +218,7 @@ class MysqlReporter(BenchmarkReport):
             VALUES('{0}', (SELECT id FROM years WHERE year = {1}),
                    '{2}', '{3}');
             """.format(configs.configs['tool'], configs.configs['year'],
-                       ver, tool_params)
+                       ver, self.tool_params)
             self._db(q2)
 
             # get new tool_id
@@ -247,8 +248,14 @@ class MysqlReporter(BenchmarkReport):
             return name[i + 1:]
 
         def dumpToFile(rb, msg = None):
-            fname = '{0}.{1}.{2}.log'.format(
-                     configs.configs['tool'], os.path.basename(rb.name),
+            d = 'unsaved-logs'
+            try:
+                os.mkdir(d)
+            except FileExistsError:
+                pass
+
+            fname = '{0}/{1}.{2}.{3}log'.format(
+                     d, configs.configs['tool'], os.path.basename(rb.name),
                      time.strftime('%y-%m-%d-%H-%M-%s'))
             f = open(fname, 'w')
 
@@ -257,7 +264,7 @@ class MysqlReporter(BenchmarkReport):
             f.write('category: {0}\n'.format(rb.category))
             f.write('name: {0}\n\n'.format(rb.name))
             f.write('cmd: {0}\n'.format(rb.cmd))
-            f.write('params: {0}\n'.format(rb.params))
+            f.write('params: {0}\n'.format(self.tool_params))
             f.write('versions: {0}\n'.format(rb.versions))
             f.write('result: {0}\n'.format(rb.result))
             f.write('memUsage: {0}\n'.format(rb.memory))
@@ -319,7 +326,8 @@ class MysqlReporter(BenchmarkReport):
         cat_id = res[0][0]
 
         q = """
-        SELECT id, correct_result FROM tasks WHERE name = '{0}' and category_id = '{1}';
+        SELECT id, correct_result FROM tasks
+        WHERE name = '{0}' and category_id = '{1}';
         """.format(get_name(rb.name), cat_id)
         res = self._db(q)
 
@@ -333,17 +341,16 @@ class MysqlReporter(BenchmarkReport):
         correct_result = res[0][1]
 
         ic = is_correct(correct_result, rb.result)
-        tm = time.strftime('%y-%m-%d %H:%M')
 
         q = """
         INSERT INTO task_results
         (tool_id, task_id, result, is_correct, points, cpu_time,
-         memory_usage, created_at, updated_at, output)
-        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}', {9})
+         memory_usage, output, run_id)
+        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}')
         """.format(tool_id, task_id, rb.result.lower(),
                    is_correct(correct_result, rb.result),
                    points(ic, rb.result), None2Zero(rb.time),
-                   None2Zero(rb.memory), tm, tm, Empty2Null(rb.output))
+                   None2Zero(rb.memory), Empty2Null(rb.output), self.run_id)
         self._db(q)
 
         self._commit()
