@@ -26,7 +26,7 @@
 #
 # On arran we have only python2, so use python2
 
-from sys import argv
+from sys import argv, exit
 from os import chdir
 from os.path import dirname
 from subprocess import Popen, PIPE
@@ -41,22 +41,26 @@ def remove_down_machines(tasks):
     any_up = False
     procs = list()
     # run it parallely
-    for t in tasks:
-        p = Popen(['ping', '-c', '1', t.getMachine()],
-                  stdout=PIPE, stderr=PIPE, bufsize=1024)
-        procs.append((p, t))
+    try:
+        for t in tasks:
+            p = Popen(['ping', '-c', '1', t.getMachine()],
+                      stdout=PIPE, stderr=PIPE, bufsize=1024)
+            procs.append((p, t))
 
-    for p, t in procs:
-        sout, serr = p.communicate()
-        if serr:
-            err(serr)
+        for p, t in procs:
+            sout, serr = p.communicate()
+            if serr:
+                err(serr)
 
-        if p.returncode != 0:
-            print(colored('WARN: {0} is down'.format(t.getMachine()), 'red'))
-            tasks.remove(t)
-        else:
-            dbg('{0} is up'.format(t.getMachine()))
-            any_up = True
+            if p.returncode != 0:
+                print(colored('WARN: {0} is down'.format(t.getMachine()), 'red'))
+                tasks.remove(t)
+            else:
+                dbg('{0} is up'.format(t.getMachine()))
+                any_up = True
+    except KeyboardInterrupt:
+        # pings will be killed as childs of this process
+        exit(0)
 
     return any_up
 
