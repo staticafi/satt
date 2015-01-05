@@ -248,19 +248,18 @@ class MysqlReporter(BenchmarkReport):
             return name[i + 1:]
 
         def dumpToFile(rb, msg = None):
+            # XXX make this a method of RunningTask
             d = 'unsaved-logs'
-            try:
+            if not os.path.exists(d):
                 os.mkdir(d)
-            except FileExistsError:
-                pass
 
-            fname = '{0}/{1}.{2}.{3}log'.format(
+            fname = '{0}/{1}.{2}.{3}.log'.format(
                      d, configs.configs['tool'], os.path.basename(rb.name),
                      time.strftime('%y-%m-%d-%H-%M-%s'))
             f = open(fname, 'w')
 
             if msg:
-                f.write('Reason: {0}'.format(msg))
+                f.write('Reason: {0}\n'.format(msg))
             f.write('category: {0}\n'.format(rb.category))
             f.write('name: {0}\n\n'.format(rb.name))
             f.write('cmd: {0}\n'.format(rb.cmd))
@@ -320,6 +319,7 @@ class MysqlReporter(BenchmarkReport):
         res = self._db(q)
         if not res:
             dumpToFile(rb, 'Do not have given category')
+            sys.stderr.write('dumped to file (unknown category)\n')
             return
 
         assert len(res) == 1
@@ -334,6 +334,7 @@ class MysqlReporter(BenchmarkReport):
         # we do not have such a task??
         if not res:
             dumpToFile(rb, 'Do not have given task')
+            sys.stderr.write('dumped to file (unknown task)\n')
             return
 
         assert len(res) == 1
