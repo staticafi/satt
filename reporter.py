@@ -306,7 +306,7 @@ class MysqlReporter(BenchmarkReport):
             if x == '':
                 return 'NULL'
 
-            return '\'{0}\''.format(x)
+            return x.strip()
 
         tool_id = self._updateDb(rb)
 
