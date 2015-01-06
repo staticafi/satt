@@ -1,2 +1,9 @@
-* temporary directory created by run_on_benchmark is not deleted
-  (fix - create it in run_benchmark)
+SYMBIOTIC
+    * temporary directory created by run_on_benchmark is not deleted
+      (fix - create it in run_benchmark)
+
+DATABASE
+    * what is year_id in tools table good for?
+    * save structure of database to .sql file and add to repo
+    * read database settings and login info from configs file
+    * set CURRENT_TIMESTAMP as default to the rest of tables
