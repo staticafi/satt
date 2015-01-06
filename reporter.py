@@ -273,12 +273,18 @@ class MysqlReporter(BenchmarkReport):
             f.close()
 
         def is_correct(res1, res2):
+            if res1 is None or res2 is None:
+                return 0
+
             if res1.upper() == res2.upper():
                 return 1
 
             return 0
 
         def points(ok, res):
+            if res is None:
+                return 0
+
             res = res.lower()
 
             if res == 'unknown' or res == 'error' or res == 'timeout':
@@ -342,6 +348,8 @@ class MysqlReporter(BenchmarkReport):
         correct_result = res[0][1]
 
         ic = is_correct(correct_result, rb.result)
+        if rb.result is None:
+            rb.result = 'ERROR'
 
         q = """
         INSERT INTO task_results
