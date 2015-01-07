@@ -203,7 +203,11 @@ class MysqlReporter(BenchmarkReport):
         self._conn.commit()
 
     def _updateDb(self, rb):
-        ver = rb.versions.strip()
+        if rb.versions:
+            ver = rb.versions.strip()
+        else:
+            #XXX is this a valid case?
+            ver = ''
 
         # If tool that runs in this run is not known to database, add it
         q = """
