@@ -50,7 +50,7 @@ class RunningTask(object):
         # arbitrary auxiliary output
         self.result = None
         self.output = ''
-        self.versions = None
+        self.versions = ''
         self.memory = None
         self.time = None
 

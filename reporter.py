@@ -94,9 +94,6 @@ class BenchmarkReport(object):
             rb.output += 'RESULT: {0}\n'.format(msg)
 
     def versions(self, rb, msg):
-            if rb.versions is None:
-                rb.versions = ''
-
             rb.versions += '{0}\n'.format(msg)
 
     def memoryUsage(self, rb, msg):
@@ -203,11 +200,7 @@ class MysqlReporter(BenchmarkReport):
         self._conn.commit()
 
     def _updateDb(self, rb):
-        if rb.versions:
-            ver = rb.versions.strip()
-        else:
-            #XXX is this a valid case?
-            ver = ''
+        ver = rb.versions.strip()
 
         # If tool that runs in this run is not known to database, add it
         q = """
