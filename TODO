@@ -1,3 +1,4 @@
+    * log errors into some file + dump failed benchmarks to a file
 SYMBIOTIC
     * temporary directory created by run_on_benchmark is not deleted
       (fix - create it in run_benchmark)
