@@ -12,13 +12,13 @@ benchmarks = ~/benchmarks
 # list of machines
 machines = stations.txt
 
-timeout = 60
+timeout = 300
 
 # use variables, whoohoo!
 # variables can be any of defined above and two
 # special: {machine} and {benchmark} (or synonym {file})
 # I think meaning is pretty clear
-remote-cmd = {ssh-cmd} {ssh-user}@{machine} '{remote-dir}/satt/symbiotic/run_benchmark' '{remote-dir}/symbiotic' '{remote-dir}/{benchmark} {timeout}'
+remote-cmd = {ssh-cmd} {ssh-user}@{machine} '{remote-dir}/satt/symbiotic/run_benchmark {remote-dir}/symbiotic {remote-dir}/{benchmark} {timeout}'
 
 # run symbiotic-sync script
 sync-cmd = symbiotic/symbiotic-sync.sh {ssh-user}@{machine} '{remote-dir}' {tool-dir}
