@@ -79,17 +79,17 @@ class BenchmarkReport(object):
         raise NotImplementedError("Child class needs to override this method")
 
     def result(self, rb, msg):
-        msg = msg.upper()
+        m = msg.upper()
 
-        if msg == 'TIMEOUT':
+        if m == 'TIMEOUT':
             rb.result = 'TIMEOUT'
-        elif msg == 'FALSE':
+        elif m == 'FALSE':
             rb.result = 'FALSE'
-        elif msg == 'ERROR':
+        elif m == 'ERROR':
             rb.result = 'ERROR'
-        elif msg == 'TRUE':
+        elif m == 'TRUE':
             rb.result = 'TRUE'
-        elif msg == 'UNKNOWN':
+        elif m == 'UNKNOWN':
             rb.result = 'UNKNOWN'
         else:
             rb.output += 'RESULT: {0}\n'.format(msg)
