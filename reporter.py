@@ -348,6 +348,9 @@ class MysqlReporter(BenchmarkReport):
         if rb.result is None:
             rb.result = 'ERROR'
 
+        # replace ' by \' in output
+        rb.output = rb.output.replace('\'', '\\\'')
+
         q = """
         INSERT INTO task_results
         (tool_id, task_id, result, is_correct, points, cpu_time,
