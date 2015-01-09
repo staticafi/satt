@@ -33,19 +33,21 @@ from common import err, dbg, colored, expand
 from dispatcher import Dispatcher
 from configs import configs
 from reporter import BenchmarkReport
+from log import satt_log
 
 class SyncReporter(BenchmarkReport):
     def done(self, rb):
         mach = rb.task.getMachine()
         name = rb.name
 
-        print('{0} {1} - {2}: Done'.format(rb.category, mach,
-                                           os.path.basename(name)))
+        msg = '{0} {1} - {2}: Done'.format(rb.category, mach,
+                                           os.path.basename(name))
+        satt_log(msg)
 
         if rb.output:
             # if there's any output, it is probably an error,
             # so write it out in red color
-            print(colored(rb.output, 'red'))
+            satt_log(colored(rb.output, 'red'))
 
         sys.stdout.flush()
 
@@ -73,8 +75,8 @@ class SyncDispatcher(Dispatcher):
 
             # if syncing failed, remove the task from tasks
             if ret != 0:
-                print(colored('Removing machine {0} because'
-                    ' syncing benchmarks failed'.format(t.getMachine()), 'red'))
+                satt_log(colored('Removing machine {0} because'
+                         ' syncing benchmarks failed'.format(t.getMachine()), 'red'))
                 tasks.remove(t)
 
     # do the same as dispatcher, but run sync-cmd instead
@@ -96,7 +98,7 @@ def add_tasks(tasks):
         t.add((configs['tool'], 'synchronizing'))
 
 def rsync_tool_runner(tasks):
-    print('Synchronizing...')
+    satt_log('Synchronizing...')
 
     if not configs.has_key('sync-cmd'):
         dbg('No sync command')
@@ -112,5 +114,5 @@ def do_sync(tasks):
         if configs['sync'] == 'yes':
             rsync_tool_runner(tasks)
     except KeyboardInterrupt:
-        print('Stopping...')
+        satt_log('Stopping...')
         sys.exit(0)

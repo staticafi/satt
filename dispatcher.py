@@ -34,6 +34,7 @@ import os
 from common import err, dbg
 from tasks import Task
 from configs import configs
+from log import satt_log
 
 class RunningTask(object):
     """ This class represents ont running task """
@@ -191,4 +192,4 @@ class Dispatcher(object):
             self._monitorTasks()
         except KeyboardInterrupt:
             self._killTasks()
-            print('Stopping...')
+            satt_log('Stopping...')

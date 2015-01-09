@@ -105,7 +105,8 @@ def parse_configs(path = 'symbiotic/config'):
     from common import err, dbg
 
     if os.path.exists(path):
-        print('Using config file {0}'.format(path))
+        from log import satt_log
+        satt_log('Using config file {0}'.format(path))
     else:
         return configs
 

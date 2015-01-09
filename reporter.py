@@ -32,8 +32,9 @@ import time
 
 import configs
 
-from common import err, colored, dbg
+from common import err, dbg
 from dispatcher import RunningTask
+from log import satt_log
 
 class BenchmarkReport(object):
     """ Report results of benchmark. This is a abstract class """
@@ -142,15 +143,13 @@ class StdoutReporter(BenchmarkReport):
             else:
                 color = 'green'
 
-        print(colored('{0} - {1}: {2}'.format(rb.category,
-                                              os.path.basename(name),
-                                              rb.result), color))
+        satt_log('{0} - {1}: {2}'.format(rb.category,
+                                         os.path.basename(name),
+                                         rb.result), color)
 
 
         if rb.result is None:
-            print(colored(rb.output, 'blue'))
-
-        sys.stdout.flush()
+            satt_log(rb.output, 'blue')
 
 try:
     import MySQLdb as db
@@ -174,7 +173,7 @@ class MysqlReporter(BenchmarkReport):
             err('{0}\n'.format(str(e)))
 
         ver = self._db('SELECT VERSION()')[0][0]
-        print('Connected to database: MySQL version {0}'.format(ver))
+        satt_log('Connected to database: MySQL version {0}'.format(ver))
 
     def _db(self, query):
         ret = None

@@ -30,12 +30,14 @@ from sys import argv, exit
 from os import chdir
 from os.path import dirname
 from subprocess import Popen, PIPE
+from time import strftime
 
 from common import err, dbg, create_lockfile, colored
 from dispatcher import Dispatcher
 from sync import do_sync
-from configs import parse_configs, parse_command_line, usage
+from configs import parse_configs, parse_command_line, usage, configs
 from tasks import get_machines, get_benchmarks
+from log import satt_log, satt_log_init
 
 def remove_down_machines(tasks):
     any_up = False
@@ -53,7 +55,7 @@ def remove_down_machines(tasks):
                 err(serr)
 
             if p.returncode != 0:
-                print(colored('WARN: {0} is down'.format(t.getMachine()), 'red'))
+                satt_log(colored('WARN: {0} is down'.format(t.getMachine()), 'red'))
                 tasks.remove(t)
             else:
                 dbg('{0} is up'.format(t.getMachine()))
@@ -64,6 +66,13 @@ def remove_down_machines(tasks):
 
     return any_up
 
+def start_log():
+    tm = strftime('%y-%m-%d-%H-%M-%s')
+    lf = '{0}.{1}.log'.format(configs['tool'], tm)
+
+    satt_log_init(lf)
+    satt_log('Starting satt on {0}'.format(tm))
+
 if __name__ == "__main__":
     # change working directory to the one with scripts
     working_dir = dirname(argv[0])
@@ -71,6 +80,8 @@ if __name__ == "__main__":
 
     if not create_lockfile():
         err('Another instance of satt is running')
+
+    start_log()
 
     tool = parse_command_line()
     configs = parse_configs('{0}/config'.format(tool))
@@ -96,7 +107,7 @@ if __name__ == "__main__":
     try:
         get_benchmarks(configs['benchmarks'], tasks)
     except KeyboardInterrupt:
-        print('Stopping...')
+        satt_log('Stopping...')
 
     # TODO do it more efficiently...
     can_run = False
