@@ -6,6 +6,7 @@ import signal
 import os
 import atexit
 import resource
+import getopt
 
 class Timeout(Exception):
     pass
@@ -17,9 +18,12 @@ def start_timeout(sec):
     signal.signal(signal.SIGALRM, alarm_handler)
     signal.alarm(sec)
 
-def run_symbiotic(dir, file):
+def run_symbiotic(dr, fl, debug = False):
+    if debug:
+        os.environ['DEBUG'] = '1'
+
     path = os.path.dirname(sys.argv[0])
-    p = subprocess.Popen(['{0}/run_on_benchmark.sh'.format(path), dir, file])
+    p = subprocess.Popen(['{0}/run_on_benchmark.sh'.format(path), dr, fl])
     return p
 
 def printTimeConsumed():
@@ -53,13 +57,33 @@ def printVersions(symbiotic_dir):
     print('=== VERSIONS')
     print(version)
 
-if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print('Usage: run_benchmark symbiotic_dir benchmark timeout')
+def parse_args():
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], '', ['timeout=', 'debug',])
+    except getopt.GetoptError as e:
+        print('{0}'.format(str(e)))
+        sys.exit(1)
 
-    symbiotic_dir = sys.argv[1]
-    benchmark = sys.argv[2]
-    timeout = int(sys.argv[3])
+    debug = False
+    timeout=0
+
+    for opt, arg in opts:
+        if opt == '--debug':
+            debug = True
+        elif opt == '--timeout':
+            timeout = int(arg)
+
+    return (args, timeout, debug)
+
+if __name__ == "__main__":
+
+    pths, timeout, debug = parse_args()
+    if len(pths) == 2:
+        symbiotic_dir = pths[0]
+        benchmark = pths[1]
+    else:
+        print('Usage: run_benchmark [--timeout=n] [--debug] symbiotic_dir benchmark')
+        sys.exit(1)
 
     # kill all subprocesses if there are any on exit
     atexit.register(lambda: os.kill(0, signal.SIGKILL))
@@ -71,7 +95,7 @@ if __name__ == "__main__":
     print('=== RESULT')
     sys.stdout.flush()
     try:
-        p = run_symbiotic(symbiotic_dir, benchmark)
+        p = run_symbiotic(symbiotic_dir, benchmark, debug)
         (out, err) = p.communicate()
 
         if p.returncode != 0:

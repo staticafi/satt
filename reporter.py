@@ -161,7 +161,7 @@ class MysqlReporter(BenchmarkReport):
         # use this to print out what is happening
         self._stdout = StdoutReporter()
         self.run_id = int(time.time())
-        self.tool_params = 'timeout={0}'.format(configs.configs['timeout'])
+        self.tool_params = '{0}'.format(configs.configs['params'])
 
         try:
             self._conn = db.connect('localhost', 'statica',

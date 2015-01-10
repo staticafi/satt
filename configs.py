@@ -30,7 +30,7 @@ import time
 
 allowed_keys = ['tool-dir', 'remote-dir', 'benchmarks', 'machines',
                 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync', 'timeout',
-                'no-db', 'sync-cmd', 'year']
+                'no-db', 'sync-cmd', 'year', 'params']
 
 def usage():
     sys.stderr.write(
@@ -99,7 +99,7 @@ Allowed keys in config file:
 configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'remote-cmd':'echo "ERROR: No command specified"',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic',
-           'year':time.strftime('%Y')}
+           'year':time.strftime('%Y'), 'params':''}
 
 def parse_configs(path = 'symbiotic/config'):
     from common import err, dbg
