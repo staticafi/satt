@@ -26,7 +26,6 @@
 #
 # On arran we have only python2, so use python2
 
-import sys
 import os
 import time
 
@@ -321,7 +320,7 @@ class MysqlReporter(BenchmarkReport):
         res = self._db(q)
         if not res:
             dumpToFile(rb, 'Do not have given category')
-            sys.stderr.write('dumped to file (unknown category)\n')
+            satt_log('^^ dumped to file (unknown category)')
             return
 
         assert len(res) == 1
@@ -336,7 +335,7 @@ class MysqlReporter(BenchmarkReport):
         # we do not have such a task??
         if not res:
             dumpToFile(rb, 'Do not have given task')
-            sys.stderr.write('dumped to file (unknown task)\n')
+            satt_log('^^ dumped to file (unknown task)')
             return
 
         assert len(res) == 1
