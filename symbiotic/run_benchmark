@@ -18,9 +18,12 @@ def start_timeout(sec):
     signal.signal(signal.SIGALRM, alarm_handler)
     signal.alarm(sec)
 
-def run_symbiotic(dr, fl, debug = False):
+def run_symbiotic(dr, fl, _debug = False, slce = True):
     if debug:
         os.environ['DEBUG'] = '1'
+
+    if slce:
+        os.environ['SLICE'] = '1'
 
     path = os.path.dirname(sys.argv[0])
     p = subprocess.Popen(['{0}/run_on_benchmark.sh'.format(path), dr, fl])
@@ -59,30 +62,34 @@ def printVersions(symbiotic_dir):
 
 def parse_args():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], '', ['timeout=', 'debug',])
+        opts, args = getopt.getopt(sys.argv[1:], '', ['timeout=',
+                                                      'debug', 'no-slice'])
     except getopt.GetoptError as e:
         print('{0}'.format(str(e)))
         sys.exit(1)
 
     debug = False
     timeout=0
+    slce = True
 
     for opt, arg in opts:
         if opt == '--debug':
             debug = True
         elif opt == '--timeout':
             timeout = int(arg)
+        elif opt == '--no-slice':
+            slce = False
 
-    return (args, timeout, debug)
+    return (args, timeout, debug, slce)
 
 if __name__ == "__main__":
 
-    pths, timeout, debug = parse_args()
+    pths, timeout, debug, slce = parse_args()
     if len(pths) == 2:
         symbiotic_dir = pths[0]
         benchmark = pths[1]
     else:
-        print('Usage: run_benchmark [--timeout=n] [--debug] symbiotic_dir benchmark')
+        print('Usage: run_benchmark [--timeout=n] [--debug] [--no-slice] symbiotic_dir benchmark')
         sys.exit(1)
 
     # kill all subprocesses if there are any on exit
@@ -95,7 +102,7 @@ if __name__ == "__main__":
     print('=== RESULT')
     sys.stdout.flush()
     try:
-        p = run_symbiotic(symbiotic_dir, benchmark, debug)
+        p = run_symbiotic(symbiotic_dir, benchmark, debug, slce)
         (out, err) = p.communicate()
 
         if p.returncode != 0:
