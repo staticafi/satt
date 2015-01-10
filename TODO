@@ -1,4 +1,9 @@
-    * log errors into some file + dump failed benchmarks to a file
+    * dump results of benchmarks that failed to file (+ machine where it run,
+      so that we can easily find the log)
+    * add --exclude options: exclude some sets of benchmarks
+    (i. e. symbiotic timeouts on all ECA benchmarks, so until we solve it,
+     we don't want to run ECA benchmarks)
+
 SYMBIOTIC
     * temporary directory created by run_on_benchmark is not deleted
       (fix - create it in run_benchmark)
@@ -8,3 +13,4 @@ DATABASE
     * save structure of database to .sql file and add to repo
     * read database settings and login info from configs file
     * set CURRENT_TIMESTAMP as default to the rest of tables
+    * there are still some unknown tasks
