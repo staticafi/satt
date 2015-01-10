@@ -8,6 +8,8 @@ import atexit
 import resource
 import getopt
 
+from time import sleep
+
 class Timeout(Exception):
     pass
 
@@ -122,6 +124,8 @@ if __name__ == "__main__":
         # use this instead of p.kill(), because
         # p.kill() does not kill the klee for some
         # reason
+        os.kill(0, signal.SIGTERM)
+        sleep(1)
         os.kill(0, signal.SIGKILL)
 
     printTimeConsumed()
