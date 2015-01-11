@@ -40,9 +40,12 @@ class SyncReporter(BenchmarkReport):
         mach = rb.task.getMachine()
         name = rb.name
 
-        msg = '{0} {1} - {2}: Done'.format(rb.category, mach,
-                                           os.path.basename(name))
-        satt_log(msg)
+        if rb.proc.returncode != 0:
+            msg = '{0} {1} - {2}: FAILED'.format(rb.category, mach, name)
+            err(msg)
+        else:
+            msg = '{0} {1} - {2}: Done'.format(rb.category, mach, name)
+            satt_log(msg)
 
         if rb.output:
             # if there's any output, it is probably an error,

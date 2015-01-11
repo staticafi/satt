@@ -120,5 +120,6 @@ if __name__ == "__main__":
         err('No benchmarks queued for running'
             ', is the path to the benchmarks alright?')
 
+    satt_log('\o/ Let the show begin! \o/')
     dispatcher = Dispatcher(tasks)
     dispatcher.run()

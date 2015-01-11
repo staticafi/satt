@@ -12,7 +12,7 @@ benchmarks = ~/benchmarks
 # list of machines
 machines = stations.txt
 
-params = --timeout=300 --debug
+params = --timeout=120
 
 # use variables, whoohoo!
 # variables can be any of defined above and two
