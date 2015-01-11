@@ -5,11 +5,15 @@ if [ $# -ne 2 ]; then
 	exit 1
 fi
 
-S="$1"
+WORKING_DIR="`dirname $1`"
+cd $WORKING_DIR
+
+S="`basename $1`"
 CATEGORY_ID="$2"
 
 for BENCH in `cat $S`; do
 	NAME=`basename $BENCH`
+	DIR=`dirname $BENCH`
 
 	if echo $NAME | grep -q 'true.*false'; then
 		CORRECT_RESULT='true'
@@ -24,5 +28,5 @@ for BENCH in `cat $S`; do
 		exit 1
 	fi
 
-	echo "INSERT INTO tasks (name, category_id, correct_result) VALUES ('$NAME', '$CATEGORY_ID', '$CORRECT_RESULT');"
+	echo "INSERT INTO tasks (name, category_id, correct_result) VALUES ('$DIR/$NAME', '$CATEGORY_ID', '$CORRECT_RESULT');"
 done
