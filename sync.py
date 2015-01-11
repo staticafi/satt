@@ -40,6 +40,7 @@ class SyncReporter(BenchmarkReport):
         mach = rb.task.getMachine()
         name = rb.name
 
+        rb.proc.poll()
         if rb.proc.returncode != 0:
             msg = '{0} {1} - {2}: FAILED'.format(rb.category, mach, name)
             err(msg)
