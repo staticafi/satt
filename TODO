@@ -7,10 +7,9 @@
 SYMBIOTIC
     * temporary directory created by run_on_benchmark is not deleted
       (fix - create it in run_benchmark)
+    * memory consumption not is measured correctly
+    * currently there are many errors in building on bens
 
 DATABASE
-    * what is year_id in tools table good for?
-    * save structure of database to .sql file and add to repo
     * read database settings and login info from configs file
-    * set CURRENT_TIMESTAMP as default to the rest of tables
-    * there are still some unknown tasks
+    * set CURRENT_TIMESTAMP as default to years
