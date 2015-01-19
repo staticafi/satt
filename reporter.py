@@ -181,7 +181,7 @@ class MysqlReporter(BenchmarkReport):
             self._cursor.execute(query)
             ret = self._cursor.fetchall()
         except db.Error as e:
-            err('Failed querying db {0}\n'.format(e.args[1]))
+            err('Failed querying db {0}\n\n{1}'.format(e.args[1], query))
 
         return ret
 
@@ -200,20 +200,30 @@ class MysqlReporter(BenchmarkReport):
     def _updateDb(self, rb):
         ver = rb.versions.strip()
 
+        q = """
+        SELECT id FROM years WHERE year = '{0}';
+        """.format(configs.configs['year']);
+        res = self._db(q)
+        if not res:
+            err('Do not have year {0}. If this is not typo, '
+                'update the database and benchmarks'.format(configs.configs['year']))
+
+        year_id = res[0][0]
+
         # If tool that runs in this run is not known to database, add it
         q = """
         SELECT id FROM tools
-        WHERE name = '{0}' and version = '{1}' and params = '{2}';
-        """.format(configs.configs['tool'], ver, self.tool_params)
+        WHERE name = '{0}' and version = '{1}'
+              and params = '{2}' and year_id = '{3}';
+        """.format(configs.configs['tool'], ver, self.tool_params, year_id)
         res = self._db(q)
         if not res:
             q2 = """
             INSERT INTO tools
-            (name, year_id, version, params)
-            VALUES('{0}', (SELECT id FROM years WHERE year = {1}),
-                   '{2}', '{3}');
-            """.format(configs.configs['tool'], configs.configs['year'],
-                       ver, self.tool_params)
+            (name, year_id, version, params, tag)
+            VALUES('{0}', '{1}', '{2}', '{3}', '{4}');
+            """.format(configs.configs['tool'], year_id,
+                       ver, self.tool_params, configs.configs['tool'])
             self._db(q2)
 
             # get new tool_id
@@ -222,7 +232,7 @@ class MysqlReporter(BenchmarkReport):
 
         tool_id = res[0][0]
 
-        return tool_id
+        return tool_id, year_id
 
     def done(self, rb):
         # print it after saving
@@ -309,14 +319,13 @@ class MysqlReporter(BenchmarkReport):
 
             return x.strip()
 
-        tool_id = self._updateDb(rb)
+        tool_id, year_id = self._updateDb(rb)
 
         q = """
         SELECT id FROM categories
         WHERE
-            year_id = (SELECT id FROM years WHERE year = {0}) and
-            name = '{1}';
-        """.format(configs.configs['year'], rb.category)
+            year_id = '{0}' and name = '{1}';
+        """.format(year_id, rb.category)
         res = self._db(q)
         if not res:
             dumpToFile(rb, 'Do not have given category')
