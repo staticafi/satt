@@ -1,14 +1,12 @@
     * dump results of benchmarks that failed to file (+ machine where it run,
       so that we can easily find the log)
-    * add --exclude options: exclude some sets of benchmarks
-    (i. e. symbiotic timeouts on all ECA benchmarks, so until we solve it,
-     we don't want to run ECA benchmarks)
 
 SYMBIOTIC
     * temporary directory created by run_on_benchmark is not deleted
       (fix - create it in run_benchmark)
     * memory consumption not is measured correctly
     * currently there are many errors in building on bens
+    * instead of assert() instrument __assert_fail()
 
 DATABASE
     * read database settings and login info from configs file
