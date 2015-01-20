@@ -147,7 +147,8 @@ class StdoutReporter(BenchmarkReport):
                                          rb.result), color)
 
 
-        if rb.result is None:
+        if rb.result is None or rb.result == 'ERROR':
+            satt_log(mach, 'blue')
             satt_log(rb.output, 'blue')
 
 try:
@@ -268,6 +269,7 @@ class MysqlReporter(BenchmarkReport):
             f.write('category: {0}\n'.format(rb.category))
             f.write('name: {0}\n\n'.format(rb.name))
             f.write('cmd: {0}\n'.format(rb.cmd))
+            f.write('machine: {0}\n'.format(rb.task.getMachine()))
             f.write('params: {0}\n'.format(self.tool_params))
             f.write('versions: {0}\n'.format(rb.versions))
             f.write('result: {0}\n'.format(rb.result))
