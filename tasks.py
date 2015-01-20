@@ -180,9 +180,14 @@ def assign_set_dir(dirpath, tasks):
             .format(edirpath, e.strerror))
 
     gotany = False
+    exclude = configs.configs['exclude'].split(',')
 
     for f in files:
         if f[-4:] != '.set':
+            continue
+
+        if f in exclude:
+            dbg('Skiping {0} benchmarks'.format(f))
             continue
 
         # this path needs to be relative, since it can appear

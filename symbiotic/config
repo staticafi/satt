@@ -8,11 +8,12 @@ remote-dir = ~
 # set of benchmarks
 year = 2015
 benchmarks = ~/benchmarks
+exclude=ECA.set
 
 # list of machines
 machines = stations.txt
 
-params = --timeout=120
+params = --timeout=120 --debug
 
 # use variables, whoohoo!
 # variables can be any of defined above and two

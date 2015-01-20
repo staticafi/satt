@@ -30,7 +30,7 @@ import time
 
 allowed_keys = ['tool-dir', 'remote-dir', 'benchmarks', 'machines',
                 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync', 'timeout',
-                'no-db', 'sync-cmd', 'year', 'params']
+                'no-db', 'sync-cmd', 'year', 'params', 'exclude']
 
 def usage():
     sys.stderr.write(
@@ -48,6 +48,9 @@ OPTS can be:
     --debug                         Enable debugging messages
     --no-db                         Do not store result to database
     --year=[year]                   Specify year
+    --exclude=set1.set,set2.set,... Do not run these benchmark sets. Ignored when
+                                    standalone .set file is given in --benchmarks
+                                    (applies only on directories).
 
 These options can be specified in config file (except for 'debug' and 'no-db')
 
@@ -99,7 +102,7 @@ Allowed keys in config file:
 configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'remote-cmd':'echo "ERROR: No command specified"',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic',
-           'year':time.strftime('%Y'), 'params':''}
+           'year':time.strftime('%Y'), 'params':'', 'exclude':''}
 
 def parse_configs(path = 'symbiotic/config'):
     from common import err, dbg
@@ -139,7 +142,7 @@ def parse_command_line():
         opts, args = getopt.getopt(sys.argv[1:], '',
                                   ['help', 'machines=', 'benchmarks=',
                                    'no-sync', 'no-db', 'sync=', 'debug',
-                                   'year='])
+                                   'year=', 'exclude='])
     except getopt.GetoptError as e:
         err('{0}'.format(str(e)))
 
@@ -161,6 +164,8 @@ def parse_command_line():
             configs['debug'] = 'yes'
         elif opt == '--year':
             configs['year'] = arg
+        elif opt == '--exclude':
+            configs['exclude'] = arg
         else:
             err('Unknown switch {0}'.format(opt))
 
