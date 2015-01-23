@@ -14,7 +14,9 @@ sync_benchmarks()
 	ssh "$MACHINE"\
 		"cd ${REMOTE_DIR};\
 		 if cd benchmarks &>/dev/null;\
-			then git pull &>/dev/null;\
+			then (git fetch origin master &&\
+			      git reset --hard origin/master &&\
+			      git clean -xdf)&>/dev/null;\
 			else git clone $GIT_REP; fi"
 
 	return $?
