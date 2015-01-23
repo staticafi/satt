@@ -148,8 +148,9 @@ class StdoutReporter(BenchmarkReport):
 
 
         if rb.result is None or rb.result == 'ERROR':
-            satt_log(mach, 'blue')
-            satt_log(rb.output, 'blue')
+            satt_log('--- output <<{0}>>'.format(mach))
+            satt_log(rb.output)
+            satt_log('---')
 
 try:
     import MySQLdb as db
