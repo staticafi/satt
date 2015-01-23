@@ -102,7 +102,8 @@ Allowed keys in config file:
 configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'remote-cmd':'echo "ERROR: No command specified"',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic',
-           'year':time.strftime('%Y'), 'params':'', 'exclude':''}
+           'year':time.strftime('%Y'), 'params':'', 'exclude':'',
+           'started_at' : time.strftime('%Y-%m-%d-%H-%S')}
 
 def parse_configs(path = 'symbiotic/config'):
     from common import err, dbg

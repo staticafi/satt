@@ -30,6 +30,7 @@ import subprocess
 import select
 import fcntl
 import os
+from time import strftime
 
 from common import err, dbg
 from tasks import Task
@@ -59,6 +60,41 @@ class RunningTask(object):
 
     def readOutput(self):
         return self.proc.stdout.readline()
+
+    def dumpToFile(self, msg = None):
+        # XXX make this a method of RunningTask
+        d = 'unknown-benchmarks'
+        if not os.path.exists(d):
+            os.mkdir(d)
+
+        d = '{0}/{1}-{2}'.format(d, configs['tool'],
+                                 configs['started_at'])
+        if not os.path.exists(d):
+            os.mkdir(d)
+
+        fname = '{0}/{1}-{2}.log'.format(d, self.category,
+                                         os.path.basename(self.name))
+        try:
+            f = open(fname, 'w')
+        except IOError as e:
+            err('Failed dumping benchmark to file: {0}'.format(str(e)))
+
+        if msg:
+            f.write('Reason: {0}\n'.format(msg))
+        f.write('category: {0}\n'.format(self.category))
+        f.write('name: {0}\n\n'.format(self.name))
+        f.write('cmd: {0}\n'.format(self.cmd))
+        f.write('machine: {0}\n'.format(self.task.getMachine()))
+        f.write('params: {0}\n'.format(configs['params']))
+        f.write('versions: {0}\n'.format(self.versions))
+        f.write('result: {0}\n'.format(self.result))
+        f.write('memUsage: {0}\n'.format(self.memory))
+        f.write('cpuUsage: {0}s\n\n'.format(self.time))
+        f.write('other output:\n{0}\n\n'.format(self.output))
+
+        f.write(str(configs))
+
+        f.close()
 
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """

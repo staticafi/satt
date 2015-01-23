@@ -27,7 +27,7 @@
 # On arran we have only python2, so use python2
 
 import os
-import time
+from time import time
 
 import configs
 
@@ -160,7 +160,7 @@ class MysqlReporter(BenchmarkReport):
     def __init__(self):
         # use this to print out what is happening
         self._stdout = StdoutReporter()
-        self.run_id = int(time.time())
+        self.run_id = int(time())
         self.tool_params = '{0}'.format(configs.configs['params'])
 
         try:
@@ -253,32 +253,6 @@ class MysqlReporter(BenchmarkReport):
 
             return name[i + 1:]
 
-        def dumpToFile(rb, msg = None):
-            # XXX make this a method of RunningTask
-            d = 'unsaved-logs'
-            if not os.path.exists(d):
-                os.mkdir(d)
-
-            fname = '{0}/{1}.{2}.{3}.log'.format(
-                     d, configs.configs['tool'], os.path.basename(rb.name),
-                     time.strftime('%y-%m-%d-%H-%M-%s'))
-            f = open(fname, 'w')
-
-            if msg:
-                f.write('Reason: {0}\n'.format(msg))
-            f.write('category: {0}\n'.format(rb.category))
-            f.write('name: {0}\n\n'.format(rb.name))
-            f.write('cmd: {0}\n'.format(rb.cmd))
-            f.write('machine: {0}\n'.format(rb.task.getMachine()))
-            f.write('params: {0}\n'.format(self.tool_params))
-            f.write('versions: {0}\n'.format(rb.versions))
-            f.write('result: {0}\n'.format(rb.result))
-            f.write('memUsage: {0}\n'.format(rb.memory))
-            f.write('cpuUsage: {0}s\n\n'.format(rb.time))
-            f.write('other output:\n{0}\n'.format(rb.output))
-
-            f.close()
-
         def is_correct(res1, res2):
             if res1 is None or res2 is None:
                 return 0
@@ -330,7 +304,7 @@ class MysqlReporter(BenchmarkReport):
         """.format(year_id, rb.category)
         res = self._db(q)
         if not res:
-            dumpToFile(rb, 'Do not have given category')
+            rb.dumpToFile('Do not have given category')
             satt_log('^^ dumped to file (unknown category)')
             return
 
@@ -345,7 +319,7 @@ class MysqlReporter(BenchmarkReport):
 
         # we do not have such a task??
         if not res:
-            dumpToFile(rb, 'Do not have given task')
+            rb.dumpToFile('Do not have given task')
             satt_log('^^ dumped to file (unknown task)')
             return
 
