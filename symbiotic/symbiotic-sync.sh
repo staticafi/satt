@@ -32,7 +32,6 @@ REMOTE_DIR="$2"
 SYMBIOTIC_DIR="$3"
 
 sendfile symbiotic/run_benchmark
-sendfile symbiotic/run_on_benchmark.sh
 
 sync_symbiotic "$MACHINE" "$REMOTE_DIR" "$SYMBIOTIC_DIR" || exit 1
 

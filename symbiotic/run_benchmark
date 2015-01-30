@@ -9,6 +9,7 @@ import resource
 import getopt
 
 from time import sleep
+from tempfile import mkdtemp
 
 class Timeout(Exception):
     pass
@@ -20,15 +21,22 @@ def start_timeout(sec):
     signal.signal(signal.SIGALRM, alarm_handler)
     signal.alarm(sec)
 
-def run_symbiotic(dr, fl, _debug = False, slce = True):
-    if debug:
+def set_environ(_debug = False, _slce = True):
+    def env_prepend(env, what):
+        s = '{0}:{1}'.format(what, os.environ[env])
+        os.environ[env] = s
+
+    if _debug:
         os.environ['DEBUG'] = '1'
 
     if slce:
         os.environ['SLICE'] = '1'
 
+def run_symbiotic(symbiotic_location, benchmark, _debug = False, slce = True):
+    set_environ(_debug, slce)
+
     path = os.path.dirname(sys.argv[0])
-    p = subprocess.Popen(['{0}/run_on_benchmark.sh'.format(path), dr, fl])
+    p = subprocess.Popen(['{0}/runme'.format(symbiotic_location), benchmark])
     return p
 
 def printTimeConsumed():
@@ -84,6 +92,19 @@ def parse_args():
 
     return (args, timeout, debug, slce)
 
+def rmrf_tmp_dir(d):
+    os.system('rm -rf {0}'.format(d))
+
+def copy_source_to_tmp(src):
+    # create temporary directory and copy sources there
+    tmpdir = mkdtemp(prefix='symbiotic.', dir='.')
+    atexit.register(rmrf_tmp_dir, tmpdir)
+    basename = os.path.basename(src)
+
+    os.system('cp {0} {1}/{2}'.format(src, tmpdir, basename))
+
+    return '{0}/{1}'.format(tmpdir, basename)
+
 if __name__ == "__main__":
 
     pths, timeout, debug, slce = parse_args()
@@ -94,17 +115,17 @@ if __name__ == "__main__":
         print('Usage: run_benchmark [--timeout=n] [--debug] [--no-slice] symbiotic_dir benchmark')
         sys.exit(1)
 
-    # kill all subprocesses if there are any on exit
-    atexit.register(lambda: os.kill(0, signal.SIGKILL))
-
     printVersions(symbiotic_dir)
 
     start_timeout(timeout)
 
+    src = copy_source_to_tmp(benchmark)
+
     print('=== RESULT')
     sys.stdout.flush()
+
     try:
-        p = run_symbiotic(symbiotic_dir, benchmark, debug, slce)
+        p = run_symbiotic(symbiotic_dir, src, debug, slce)
         (out, err) = p.communicate()
 
         if p.returncode != 0:
@@ -120,6 +141,9 @@ if __name__ == "__main__":
     except Timeout:
         print('TIMEOUT')
         sys.stdout.flush()
+
+        printTimeConsumed()
+        printMemoryUsage()
 
         # use this instead of p.kill(), because
         # p.kill() does not kill the klee for some
