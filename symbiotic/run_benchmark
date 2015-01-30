@@ -101,7 +101,10 @@ def copy_source_to_tmp(src):
     atexit.register(rmrf_tmp_dir, tmpdir)
     basename = os.path.basename(src)
 
-    os.system('cp {0} {1}/{2}'.format(src, tmpdir, basename))
+    if os.system('cp {0} {1}/{2}'.format(src, tmpdir, basename)) != 0:
+        # cp already gave error message
+        rmrf_tmp_dir(tmpdir)
+        sys.exit(1)
 
     return '{0}/{1}'.format(tmpdir, basename)
 
