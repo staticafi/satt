@@ -35,14 +35,14 @@ allowed_keys = ['tool-dir', 'remote-dir', 'benchmarks', 'machines',
 def usage():
     sys.stderr.write(
 """
-Static analysis tools tester, 2014
+Static analysis tools tester, 2014 - 2015
 -------------------------------------
 
 Usage: satt OPTS tool
 
 OPTS can be:
     --machines=file.txt             File with machines
-    --benchmarks=dir/set_file       Directory with sets of benchmarks or set file
+    --benchmarks=dir/set_file       Directory with sets of benchmarks or set file(s)
     --no-sync                       Do not sync tool on remote machines
     --sync=[yes/no]                 Whether to sync tool on remote machines
     --debug                         Enable debugging messages
@@ -51,6 +51,7 @@ OPTS can be:
     --exclude=set1.set,set2.set,... Do not run these benchmark sets. Ignored when
                                     standalone .set file is given in --benchmarks
                                     (applies only on directories).
+    --params=[params]               overrides params entry in config file
 
 These options can be specified in config file (except for 'debug' and 'no-db')
 
@@ -62,7 +63,7 @@ tool_dir  \
     remote_runner
     remote_sync (optional)
 
-In config file, there are few keys that is searched for:
+In config file, there are few keys that are searched for:
 tool-dir      -- directory that contains the tool
 remote-dir    -- where will we work on remote machines
 remote-cmd    -- command to run the test on remote computer. This command
@@ -72,12 +73,6 @@ sync-cmd      -- run this command before running tests to sync tool on remote
                  computers
 year          -- specify year of sv-comp. The benchmarks will be searched for in
                  {benchmarks}/{year}
-
-In configuration file can be comments (line begining with #) and in variables can
-be used another variables in {var} that will be expaneded. Example:
-
-tool-dir = tooler
-remote-dir = ~/{tool-dir}
 
 There are two special variables {benchmark} (synonym {file}) and {machine}
 that will expand to current benchmark file and remote machine.
