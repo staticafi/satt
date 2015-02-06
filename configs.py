@@ -143,7 +143,7 @@ def parse_command_line():
         opts, args = getopt.getopt(sys.argv[1:], '',
                                   ['help', 'machines=', 'benchmarks=',
                                    'no-sync', 'no-db', 'sync=', 'debug',
-                                   'year=', 'exclude='])
+                                   'year=', 'exclude=', 'params='])
     except getopt.GetoptError as e:
         err('{0}'.format(str(e)))
 
@@ -167,6 +167,8 @@ def parse_command_line():
             configs['year'] = arg
         elif opt == '--exclude':
             configs['exclude'] = arg
+        elif opt == '--params':
+            configs['params'] = arg
         else:
             err('Unknown switch {0}'.format(opt))
 
