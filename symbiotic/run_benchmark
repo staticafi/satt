@@ -147,8 +147,6 @@ if __name__ == "__main__":
         printTimeConsumed()
         printMemoryUsage()
 
-        rmrf_tmp_dir(tmpdir)
-
         # kill klee and everything (sometimes these keep running)
         # use this instead of p.kill(), because
         # p.kill() does not kill the klee for some
@@ -156,3 +154,5 @@ if __name__ == "__main__":
         os.kill(0, signal.SIGTERM)
         sleep(1)
         os.kill(0, signal.SIGKILL)
+
+        rmrf_tmp_dir(tmpdir)
