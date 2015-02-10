@@ -149,10 +149,10 @@ class StdoutReporter(BenchmarkReport):
 
         if rb.result is None or rb.result == 'ERROR':
             satt_log('--- output <<{0}>>'.format(mach))
-            o = rb.output.strip()
+            out = rb.output.strip()
 
-            if o:
-                satt_log(rb.o)
+            if out:
+                satt_log(out)
                 satt_log('---')
 
         if rb.result is None:
