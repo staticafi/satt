@@ -96,6 +96,18 @@ class RunningTask(object):
 
         f.close()
 
+def expandVariables(cmd):
+    c = cmd[:]
+    for key, val in configs.items():
+        # we cannot expand params here, because we do not know
+        # the category
+        if key == 'params':
+            continue
+
+        c = c.replace('{{{0}}}'.format(key), val)
+
+    return c
+
 class Dispatcher(object):
     """ Dispatch symbiotic instances between computers """
 
@@ -147,17 +159,10 @@ class Dispatcher(object):
         fd = bench.proc.stdout.fileno()
         self._registerFd(fd, bench)
 
-    def _expandVars(self, cmd):
-        c = cmd[:]
-        for key, val in configs.items():
-            c = c.replace('{{{0}}}'.format(key), val)
-
-        return c
-
     def _runBenchmark(self, task):
         """ Run another benchmark from task """
 
-        cmd = self._expandVars(configs['remote-cmd'])
+        cmd = expandVariables(configs['remote-cmd'])
         bench = task.runBenchmark(cmd)
         if bench is None: # no more tests to run
             return None

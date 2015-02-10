@@ -100,6 +100,31 @@ configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'year':time.strftime('%Y'), 'params':'', 'exclude':'',
            'started_at' : time.strftime('%Y-%m-%d-%H-%S')}
 
+def params_from_string(pars, pard = None):
+    " pars = params string, pard = params dictionary "
+    " returns updated (or new) dictionary created from params string"
+
+    # default value for all benchmarks is empty string
+    # this way we avoid exceptions without explicit checks
+    if pard is None:
+        pard = {'*':''}
+
+    for p in pars.split(','):
+        try:
+            k, v = p.split(':', 1)
+        except ValueError:
+            err('Wrong item in params key: {0}'.format(p))
+
+        k = k.strip()
+
+        # allow omit *
+        if not k:
+            k = '*'
+
+        pard[k] = v.strip()
+
+    return pard
+
 def parse_configs(path = 'symbiotic/config'):
     from common import err, dbg
 
@@ -125,7 +150,10 @@ def parse_configs(path = 'symbiotic/config'):
         val = val.strip()
 
         if key in allowed_keys:
-            configs[key] = val
+            if key == 'params':
+                configs[key] = params_from_string(val)
+            else:
+                configs[key] = val
         else:
             err('Unknown config key: {0}'.format(key))
 
@@ -163,7 +191,11 @@ def parse_command_line():
         elif opt == '--exclude':
             configs['exclude'] = arg
         elif opt == '--params':
-            configs['params'] = arg
+            if configs.has_key('params'):
+                # if we have some params, just update
+                configs['params'] = params_from_string(arg, configs['params'])
+            else:
+                configs['params'] = params_from_string(arg)
         else:
             err('Unknown switch {0}'.format(opt))
 

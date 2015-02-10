@@ -71,6 +71,24 @@ class Task(object):
         """ Add new test to the task """
         self._benchmarks.append(test)
 
+    def expandSpecialVariables(self, cmd, name, cat):
+        # expand {machine}
+        ecmd = cmd.replace('{machine}', self._machine)
+
+        # expand {benchmark} and {file}
+        ecmd = ecmd.replace('{benchmark}', name)
+        # {file} is a synonym to {benchmarks}
+        ecmd = ecmd.replace('{file}', name)
+
+        # expand {params}
+        par = configs.configs['params']
+        if par.has_key(cat):
+            ecmd = ecmd.replace('{params}', '{0} {1}'.format(par['*'], par[cat]))
+        else:
+            ecmd = ecmd.replace('{params}', par['*'])
+
+        return ecmd
+
     def runBenchmark(self, cmd):
         """
         Run one benchmark.
@@ -88,14 +106,9 @@ class Task(object):
 
         name, cat = self._benchmarks.pop()
 
-        # if the command contains variables {machine} and {benchmark}
-        # expand them
-        ecmd = cmd.replace('{machine}', self._machine)
-        ecmd = ecmd.replace('{benchmark}', name)
-        # {file} is a synonym to {benchmarks}
-        ecmd = ecmd.replace('{file}', name)
-
+        ecmd = self.expandSpecialVariables(cmd, name, cat)
         dbg('running: {0}'.format(ecmd))
+
         p = subprocess.Popen(ecmd, Task.BUFSIZE, shell = True,
                              stdout = subprocess.PIPE,
                              stderr = subprocess.STDOUT)
