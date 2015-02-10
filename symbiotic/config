@@ -13,11 +13,16 @@ exclude=ECA.set
 # list of machines
 machines = stations.txt
 
-params = --timeout=120 --debug
+# these are comma separated parameters of the form:
+#    set1:params, set2:params
+# '*' stands for every set
+# {benchmark-dirname} is special variable that expands to the directory containing
+# benchmark
+params = *: --timeout=120 --debug --prp={remote-dir}/{benchmark-dirname}/ALL.prp, DeviceDrivers64: --64
 
 # use variables, whoohoo!
 # variables can be any of defined above and two
-# special: {machine} and {benchmark} (or synonym {file})
+# special: {machine} and {benchmark} (or synonym {file}) and {params}
 # I think meaning is pretty clear
 remote-cmd = {ssh-cmd} {ssh-user}@{machine} '{remote-dir}/satt/symbiotic/run_benchmark {params} {remote-dir}/symbiotic {remote-dir}/{benchmark}'
 

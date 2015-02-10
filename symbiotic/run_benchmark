@@ -39,7 +39,7 @@ def run_symbiotic(symbiotic_location, benchmark, _debug = False,
     cmd = ['{0}/runme'.format(symbiotic_location)]
     if not prp is None:
         cmd.append('-p')
-        cmd.append(prp)
+        cmd.append(os.path.expanduser(prp))
     if arch == '64bit':
         cmd.append('-6')
 
@@ -91,7 +91,7 @@ def parse_args():
     debug = False
     timeout=0
     slce = True
-    arch = '32'
+    arch = None
     prp = None
 
     for opt, arg in opts:
