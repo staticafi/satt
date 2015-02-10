@@ -83,6 +83,10 @@ class Task(object):
         """ Add new test to the task """
         self._benchmarks.append(test)
 
+    def readd(self, rb):
+        """ Add benchmark that already ran """
+        self.add((rb.name, rb.category))
+
     def expandSpecialVariables(self, cmd, name, cat):
         # expand {params}
         par = configs.configs['params']

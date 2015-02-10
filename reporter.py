@@ -152,6 +152,11 @@ class StdoutReporter(BenchmarkReport):
             satt_log(rb.output)
             satt_log('---')
 
+        if rb.result is None:
+            return False
+
+        return True
+
 try:
     import MySQLdb as db
 except ImportError:
@@ -348,3 +353,7 @@ class MysqlReporter(BenchmarkReport):
 
         self._commit()
 
+        if rb.result is None:
+            return False
+
+        return True

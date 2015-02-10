@@ -55,6 +55,8 @@ class SyncReporter(BenchmarkReport):
 
         sys.stdout.flush()
 
+        return True
+
 class SyncDispatcher(Dispatcher):
 
     def __init__(self, tasks):

@@ -198,7 +198,20 @@ class Dispatcher(object):
                 if flags & select.POLLHUP:
                     # remove the old benchmark
                     bench = self._unregisterFd(fd)
-                    self._report.done(bench)
+                    if not self._report.done(bench):
+                        # something went wrong - queue this one again
+                        satt_log('Running benchmark again');
+
+                        # XXX we do not have a mechanism how to track
+                        # how many times the benchmark ran, so it may happen
+                        # that it will run indifinetly many times.
+                        # It seems we don't need to care about that atm, so let's
+                        # ignore it for now.
+                        #
+                        # P. S message for future me: If you read this, we probably hit
+                        # this error and you hate me and my wickidness - just sorry.
+                        bench.task.readd(bench)
+
                     # run new benchmark
                     self._runBenchmark(bench.task)
 
