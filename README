@@ -4,4 +4,6 @@ Static analysis tools tester
 Run static analysis tools on SV-COMP benchmarks parallely
 on more computers.
 
+try run satt --help for more information.
+
 e-mail: statica@fi.muni.cz
