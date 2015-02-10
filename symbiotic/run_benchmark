@@ -132,6 +132,16 @@ def copy_source_to_tmp(src):
 
     return (tmpdir, '{0}/{1}'.format(tmpdir, basename))
 
+def signal_childs(sig):
+    signal.signal(sig, signal.SIG_IGN)
+    os.kill(0, sig)
+    signal.signal(sig, signal.SIG_DFL)
+
+def sigpipe_handler(signum, data):
+    signal_childs(signal.SIGINT)
+    signal_childs(signal.SIGINT)
+    signal_childs(signal.SIGKILL)
+
 if __name__ == "__main__":
 
     pths, timeout, debug, slce, prp, arch = parse_args()
@@ -147,9 +157,10 @@ if __name__ == "__main__":
 
     printVersions(symbiotic_dir)
 
-    start_timeout(timeout)
-
     tmpdir, src = copy_source_to_tmp(benchmark)
+
+    signal.signal(signal.SIGPIPE, sigpipe_handler)
+    start_timeout(timeout)
 
     print('=== RESULT')
     sys.stdout.flush()
@@ -178,22 +189,22 @@ if __name__ == "__main__":
         printTimeConsumed()
         printMemoryUsage()
 
-        if rmrf_tmp_dir(tmpdir) != 0:
-            # kill klee and everything (sometimes these keep running)
-            # use this instead of p.kill(), because
-            # p.kill() does not kill the klee for some
-            # reason
-            os.kill(0, signal.SIGTERM)
-            os.kill(0, signal.SIGKILL)
+        # use sigint twice, klee sometimes needs it
+        signal_childs(signal.SIGINT)
+        signal_childs(signal.SIGINT)
+
+        signal_childs(signal.SIGTERM)
 
         # wait a while untill klee is killed if it is hanging
         trials = 0
         notdone = 1
-        while notdone != 0 and trials < 60:
+        while notdone != 0 and trials < 20:
             trials += 1
+            print('waiting for childs termination ({0}) ...'.format(trials))
 
             sleep(1)
-            os.kill(0, signal.SIGKILL)
             notdone = rmrf_tmp_dir(tmpdir)
 
+        print('sending SIGKILL')
+        os.kill(0, signal.SIGKILL)
 
