@@ -97,7 +97,7 @@ Allowed keys in config file:
 configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'remote-cmd':'echo "ERROR: No command specified"',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic',
-           'year':time.strftime('%Y'), 'params':'', 'exclude':'',
+           'year':time.strftime('%Y'), 'params':{'*':''}, 'exclude':'',
            'started_at' : time.strftime('%Y-%m-%d-%H-%S')}
 
 def params_from_string(pars, pard = None):
@@ -113,6 +113,7 @@ def params_from_string(pars, pard = None):
         try:
             k, v = p.split(':', 1)
         except ValueError:
+            from common import err
             err('Wrong item in params key: {0}'.format(p))
 
         k = k.strip()
