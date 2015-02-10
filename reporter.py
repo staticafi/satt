@@ -249,7 +249,7 @@ class MysqlReporter(BenchmarkReport):
 
     def done(self, rb):
         # print it after saving
-        self._stdout.done(rb)
+        return_value = self._stdout.done(rb)
 
         def get_name(name):
             n = 0
@@ -359,7 +359,4 @@ class MysqlReporter(BenchmarkReport):
 
         self._commit()
 
-        if rb.result is None:
-            return False
-
-        return True
+        return return_value
