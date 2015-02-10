@@ -109,7 +109,7 @@ def parse_args():
     return (args, timeout, debug, slce, prp, arch)
 
 def rmrf_tmp_dir(d):
-    os.system('rm -rf {0}'.format(d))
+    return os.system('rm -rf {0}'.format(d))
 
 def copy_source_to_tmp(src):
     # create temporary directory and copy sources there
@@ -164,12 +164,22 @@ if __name__ == "__main__":
         printTimeConsumed()
         printMemoryUsage()
 
-        # kill klee and everything (sometimes these keep running)
-        # use this instead of p.kill(), because
-        # p.kill() does not kill the klee for some
-        # reason
-        os.kill(0, signal.SIGTERM)
-        sleep(1)
-        os.kill(0, signal.SIGKILL)
+        if rmrf_tmp_dir(tmpdir) != 0:
+            # kill klee and everything (sometimes these keep running)
+            # use this instead of p.kill(), because
+            # p.kill() does not kill the klee for some
+            # reason
+            os.kill(0, signal.SIGTERM)
+            os.kill(0, signal.SIGKILL)
 
-        rmrf_tmp_dir(tmpdir)
+        # wait a while untill klee is killed if it is hanging
+        trials = 0
+        notdone = 1
+        while notdone != 0 and trials < 10:
+            trials += 1
+
+            sleep(1)
+            os.kill(0, signal.SIGKILL)
+            notdone = rmrf_tmp_dir(tmpdir)
+
+
