@@ -172,6 +172,9 @@ class MysqlReporter(BenchmarkReport):
         self.run_id = int(time())
         self.tool_params = '{0}'.format(configs.configs['params'])
 
+        # replace apostrophes in tool_params
+        self.tool_params = self.tool_params.replace('\'', '\\\'')
+
         try:
             self._conn = db.connect('localhost', 'statica',
                                     'statica', 'statica')
