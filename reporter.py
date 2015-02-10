@@ -194,7 +194,7 @@ class MysqlReporter(BenchmarkReport):
             self._cursor.execute(query)
             ret = self._cursor.fetchall()
         except db.Error as e:
-            err('Failed querying db {0}\n\n{1}'.format(e.args[1], query))
+            err('Failed querying db: {0}\n\n{1}'.format(e.args[1], query))
 
         return ret
 
@@ -249,7 +249,10 @@ class MysqlReporter(BenchmarkReport):
 
     def done(self, rb):
         # print it after saving
-        return_value = self._stdout.done(rb)
+        if not self._stdout.done(rb):
+            # if there is a problem, the benchmark will run again, so do not
+            # proceed further
+            return False
 
         def get_name(name):
             n = 0
@@ -318,7 +321,7 @@ class MysqlReporter(BenchmarkReport):
         if not res:
             rb.dumpToFile('Do not have given category')
             satt_log('^^ dumped to file (unknown category)')
-            return
+            return True
 
         assert len(res) == 1
         cat_id = res[0][0]
@@ -333,18 +336,15 @@ class MysqlReporter(BenchmarkReport):
         if not res:
             rb.dumpToFile('Do not have given task')
             satt_log('^^ dumped to file (unknown task)')
-            return
+            return True
 
         assert len(res) == 1
         task_id = res[0][0]
         correct_result = res[0][1]
 
-        ic = is_correct(correct_result, rb.result)
-        if rb.result is None:
-            rb.result = 'ERROR'
-
         # replace ' by \' in output
         rb.output = rb.output.replace('\'', '\\\'')
+        ic = is_correct(correct_result, rb.result)
 
         q = """
         INSERT INTO task_results
@@ -359,4 +359,4 @@ class MysqlReporter(BenchmarkReport):
 
         self._commit()
 
-        return return_value
+        return True
