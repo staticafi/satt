@@ -21,6 +21,11 @@ def start_timeout(sec):
     signal.signal(signal.SIGALRM, alarm_handler)
     signal.alarm(sec)
 
+def stop_timeout():
+    # turn of timeout
+    signal.signal(signal.SIGALRM, signal.SIG_DFL)
+    signal.alarm(0)
+
 def set_environ(_debug = False, _slce = True):
     def env_prepend(env, what):
         s = '{0}:{1}'.format(what, os.environ[env])
@@ -148,6 +153,7 @@ if __name__ == "__main__":
     try:
         p = run_symbiotic(symbiotic_dir, src, debug, slce, prp, arch)
         (out, err) = p.communicate()
+        stop_timeout()
 
         if p.returncode != 0:
             print('ERROR')
@@ -163,6 +169,8 @@ if __name__ == "__main__":
         print('TIMEOUT')
         sys.stdout.flush()
     finally:
+        stop_timeout()
+
         printTimeConsumed()
         printMemoryUsage()
 
