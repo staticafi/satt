@@ -175,7 +175,7 @@ if __name__ == "__main__":
         # wait a while untill klee is killed if it is hanging
         trials = 0
         notdone = 1
-        while notdone != 0 and trials < 10:
+        while notdone != 0 and trials < 60:
             trials += 1
 
             sleep(1)
