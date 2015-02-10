@@ -30,7 +30,7 @@ import fcntl
 import os
 
 from common import err, dbg, colored, expand
-from dispatcher import Dispatcher, expandVariables
+from dispatcher import Dispatcher
 from configs import configs
 from reporter import BenchmarkReport
 from log import satt_log
@@ -86,8 +86,7 @@ class SyncDispatcher(Dispatcher):
     # do the same as dispatcher, but run sync-cmd instead
     # of remote-cmd
     def _runBenchmark(self, task):
-        cmd = expandVariables(configs['sync-cmd'])
-        bench = task.runBenchmark(cmd)
+        bench = task.runBenchmark(configs['sync-cmd'])
         if bench is None:
             return None
 

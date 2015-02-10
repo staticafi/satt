@@ -39,6 +39,18 @@ import getopt
 from common import err, dbg, expand
 import configs
 
+def expandVariables(cmd):
+    c = cmd[:]
+    for key, val in configs.configs.items():
+        # params is not string, we cannot replace it like this
+        # more over it has been replaced in expandSpecialVariables
+        if key == 'params':
+            continue
+
+        c = c.replace('{{{0}}}'.format(key), val)
+
+    return c
+
 class Task(object):
     """
     Class representing a task running on a remote computer
@@ -72,20 +84,24 @@ class Task(object):
         self._benchmarks.append(test)
 
     def expandSpecialVariables(self, cmd, name, cat):
+        # expand {params}
+        par = configs.configs['params']
+        if par.has_key(cat):
+            ecmd = cmd.replace('{params}', '{0} {1}'.format(par['*'], par[cat]))
+        else:
+            ecmd = cmd.replace('{params}', par['*'])
+
         # expand {machine}
-        ecmd = cmd.replace('{machine}', self._machine)
+        ecmd = ecmd.replace('{machine}', self._machine)
 
         # expand {benchmark} and {file}
         ecmd = ecmd.replace('{benchmark}', name)
         # {file} is a synonym to {benchmarks}
         ecmd = ecmd.replace('{file}', name)
 
-        # expand {params}
-        par = configs.configs['params']
-        if par.has_key(cat):
-            ecmd = ecmd.replace('{params}', '{0} {1}'.format(par['*'], par[cat]))
-        else:
-            ecmd = ecmd.replace('{params}', par['*'])
+        # expand {benchmark-dirname} and {file-dirname}
+        ecmd = ecmd.replace('{benchmark-dirname}', os.path.dirname(name))
+        ecmd = ecmd.replace('{file-dirname}', os.path.dirname(name))
 
         return ecmd
 
@@ -107,6 +123,7 @@ class Task(object):
         name, cat = self._benchmarks.pop()
 
         ecmd = self.expandSpecialVariables(cmd, name, cat)
+        ecmd = expandVariables(ecmd)
         dbg('running: {0}'.format(ecmd))
 
         p = subprocess.Popen(ecmd, Task.BUFSIZE, shell = True,
