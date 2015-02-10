@@ -126,6 +126,8 @@ def copy_source_to_tmp(src):
     if os.system('cp {0} {1}/{2}'.format(src, tmpdir, basename)) != 0:
         # cp already gave error message
         rmrf_tmp_dir(tmpdir)
+        print('=== RESULT')
+        print('ERROR')
         sys.exit(1)
 
     return (tmpdir, '{0}/{1}'.format(tmpdir, basename))
@@ -137,6 +139,8 @@ if __name__ == "__main__":
         symbiotic_dir = pths[0]
         benchmark = pths[1]
     else:
+        print('=== RESULT')
+        print('ERROR')
         print('Usage: run_benchmark [--timeout=n] [--debug] [--no-slice]'
               '[--prp=property_file] [--64] symbiotic_dir benchmark')
         sys.exit(1)
