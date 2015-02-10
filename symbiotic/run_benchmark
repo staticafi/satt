@@ -31,6 +31,8 @@ def set_environ(_debug = False, _slce = True):
 
     if slce:
         os.environ['SLICE'] = '1'
+    else:
+        os.environ['SLICE'] = '0'
 
 def run_symbiotic(symbiotic_location, benchmark, _debug = False,
                   slce = True, prp = None, arch = None):
