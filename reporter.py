@@ -192,7 +192,7 @@ def Empty2Null(x):
     if x == '':
         return 'NULL'
 
-    return x.strip()
+    return '\'{0}\''.format(x.strip())
 
 class MysqlReporter(BenchmarkReport):
     def __init__(self):
@@ -371,7 +371,7 @@ class MysqlReporter(BenchmarkReport):
         INSERT INTO task_results
         (tool_id, task_id, result, is_correct, points, cpu_time,
          memory_usage, output, run_id)
-        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}')
+        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', {7}, '{8}')
         """.format(tool_id, task_id, rb.result.lower(),
                    is_correct(correct_result, rb.result),
                    points(ic, rb.result, self._rating_methods), None2Zero(rb.time),
