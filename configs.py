@@ -30,7 +30,7 @@ import time
 
 allowed_keys = ['tool-dir', 'remote-dir', 'benchmarks', 'machines',
                 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync', 'timeout',
-                'no-db', 'sync-cmd', 'year', 'params', 'exclude']
+                'no-db', 'sync-cmd', 'year', 'params', 'exclude', 'note']
 
 def usage():
     sys.stderr.write(
@@ -52,6 +52,8 @@ OPTS can be:
                                     standalone .set file is given in --benchmarks
                                     (applies only on directories).
     --params=[params]               overrides params entry in config file
+    --note=[note]                   add note about this run of satt (will have effect
+                                    only without --no-db)
 
 These options can be specified in config file (except for 'debug' and 'no-db')
 
@@ -98,7 +100,7 @@ configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'remote-cmd':'echo "ERROR: No command specified"',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic',
            'year':time.strftime('%Y'), 'params':{'*':''}, 'exclude':'',
-           'started_at' : time.strftime('%Y-%m-%d-%H-%S')}
+           'started_at' : time.strftime('%Y-%m-%d-%H-%S'), 'note':'NULL'}
 
 def params_from_string(pars, pard = None):
     " pars = params string, pard = params dictionary "
@@ -167,7 +169,7 @@ def parse_command_line():
         opts, args = getopt.getopt(sys.argv[1:], '',
                                   ['help', 'machines=', 'benchmarks=',
                                    'no-sync', 'no-db', 'sync=', 'debug',
-                                   'year=', 'exclude=', 'params='])
+                                   'year=', 'exclude=', 'params=', 'note='])
     except getopt.GetoptError as e:
         err('{0}'.format(str(e)))
 
@@ -191,6 +193,8 @@ def parse_command_line():
             configs['year'] = arg
         elif opt == '--exclude':
             configs['exclude'] = arg
+        elif opt == '--note':
+            configs['note'] = arg
         elif opt == '--params':
             if configs.has_key('params'):
                 # if we have some params, just update

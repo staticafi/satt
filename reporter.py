@@ -233,10 +233,11 @@ class MysqlReporter(BenchmarkReport):
         if not res:
             q2 = """
             INSERT INTO tools
-            (name, year_id, version, params, tag)
-            VALUES('{0}', '{1}', '{2}', '{3}', '{4}');
+            (name, year_id, version, params, tag, note)
+            VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}');
             """.format(configs.configs['tool'], year_id,
-                       ver, self.tool_params, configs.configs['tool'])
+                       ver, self.tool_params, configs.configs['tool'],
+                       configs.configs['note'])
             self._db(q2)
 
             # get new tool_id
