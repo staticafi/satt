@@ -100,7 +100,7 @@ configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'remote-cmd':'echo "ERROR: No command specified"',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic',
            'year':time.strftime('%Y'), 'params':{'*':''}, 'exclude':'',
-           'started_at' : time.strftime('%Y-%m-%d-%H-%S'), 'note':'NULL'}
+           'started_at' : time.strftime('%Y-%m-%d-%H-%S'), 'note':''}
 
 def params_from_string(pars, pard = None):
     " pars = params string, pard = params dictionary "

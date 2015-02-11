@@ -165,6 +165,35 @@ try:
 except ImportError:
     dbg('Do not have MySQLdb module')
 
+class RatingMethod(object):
+    def __init__(self, query_func):
+        res = query_func('SELECT unknown, false_correct, false_incorrect,'
+                         'true_correct, true_incorrect '
+                         'FROM rating_methods INNER JOIN years '
+                         'ON rating_methods.year_id = years.id '
+                         'WHERE year = {0};'.format(configs.configs['year']))
+        if not res:
+            err('Failed getting rating methods')
+
+        res = res[0]
+
+        self.unknown = res[0]
+        self.false_correct = res[1]
+        self.false_incorrect = res[2]
+        self.true_correct = res[3]
+        self.true_incorrect = res[4]
+
+def None2Zero(x):
+    if x is None:
+        return 0
+    return x
+
+def Empty2Null(x):
+    if x == '':
+        return 'NULL'
+
+    return x.strip()
+
 class MysqlReporter(BenchmarkReport):
     def __init__(self):
         # use this to print out what is happening
@@ -186,6 +215,8 @@ class MysqlReporter(BenchmarkReport):
 
         ver = self._db('SELECT VERSION()')[0][0]
         satt_log('Connected to database: MySQL version {0}'.format(ver))
+
+        self._rating_methods = RatingMethod(self._db)
 
     def _db(self, query):
         ret = None
@@ -234,10 +265,10 @@ class MysqlReporter(BenchmarkReport):
             q2 = """
             INSERT INTO tools
             (name, year_id, version, params, tag, note)
-            VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}');
+            VALUES('{0}', '{1}', '{2}', '{3}', '{4}', {5});
             """.format(configs.configs['tool'], year_id,
                        ver, self.tool_params, configs.configs['tool'],
-                       configs.configs['note'])
+                       Empty2Null(configs.configs['note']))
             self._db(q2)
 
             # get new tool_id
@@ -278,38 +309,27 @@ class MysqlReporter(BenchmarkReport):
 
             return 0
 
-        def points(ok, res):
+        def points(ok, res, rm):
             if res is None:
                 return 0
 
             res = res.lower()
 
             if res == 'unknown' or res == 'error' or res == 'timeout':
-                return 0
+                return rm.unknown
             elif res == 'false':
                 if ok:
-                    return 1
+                    return rm.false_correct
                 else:
-                    return -6
+                    return rm.false_incorrect
             elif res == 'true':
                 if ok:
-                    return 2
+                    return rm.true_correct
                 else:
-                    return -12
+                    return rm.true_incorrect
             else:
                 dbg('Unknown result, skipping points')
                 return 0
-
-        def None2Zero(x):
-            if x is None:
-                return 0
-            return x
-
-        def Empty2Null(x):
-            if x == '':
-                return 'NULL'
-
-            return x.strip()
 
         tool_id, year_id = self._updateDb(rb)
 
@@ -354,7 +374,7 @@ class MysqlReporter(BenchmarkReport):
         VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}')
         """.format(tool_id, task_id, rb.result.lower(),
                    is_correct(correct_result, rb.result),
-                   points(ic, rb.result), None2Zero(rb.time),
+                   points(ic, rb.result, self._rating_methods), None2Zero(rb.time),
                    None2Zero(rb.memory), Empty2Null(rb.output), self.run_id)
         self._db(q)
 
