@@ -32,6 +32,16 @@ def print_help():
           'it will be processed and the tool will exit.')
     print('\nInteractively you can use these commands:')
     print('\tmysql\t\tLog into interactive mysql')
+    print('\tdelete\t\tDelete entry from db')
+    print('\t  tool [id | name version/note]')
+    print('\t  result [not implemented]')
+
+def print_result(res):
+    for r in res:
+        sys.stdout.write('||')
+        for it in r:
+            sys.stdout.write(' {0} |'.format(it))
+        sys.stdout.write('|\n')
 
 def get_input(prompt = '> '):
     try:
@@ -41,6 +51,71 @@ def get_input(prompt = '> '):
         return None
     except KeyboardInterrupt:
         return None
+
+def cmd_delete(db, cmd):
+    if cmd.startswith('tool '):
+        return delete_tool(db, cmd[5:])
+    elif cmd.startswith('result '):
+        return delete_result(db, cmd[7:])
+    else:
+        return False
+
+def quote(s):
+    if s[0] == '\'' and s[-1] == '\'':
+        return s
+    else:
+        return '\'{0}\''.format(s)
+
+def delete_tool(db, tool):
+    try:
+        id = int(tool)
+    except ValueError:
+        id = None
+
+    if id:
+        if not db.query('SELECT id FROM tools WHERE id = {0}'.format(id)):
+            print('No such tool')
+            return True
+
+        db.query('DELETE FROM tools WHERE id = {0}'.format(id))
+        db.commit()
+        return True
+
+    parts = tool.split(' ', 1)
+    if len(parts) != 2:
+        print('Too few arguments. Need version or note to distinguish tool')
+        return True
+
+    res1 = db.query('SELECT id FROM tools WHERE name = {0}'
+                    ' and version = {1}'.format(quote(parts[0]), quote(parts[1])))
+    res2 = db.query('SELECT id FROM tools WHERE name = {0}'
+                    ' and note = {1}'.format(quote(parts[0]), quote(parts[1])))
+
+    if len(res1) + len(res2) > 1:
+        print('Found more candidates, choose one (use id)')
+
+        res1 = db.query('SELECT id, name, version, note FROM tools WHERE name = {0}'
+                        ' and version = {1}'.format(quote(parts[0]), quote(parts[1])))
+        res2 = db.query('SELECT id, name, version, note FROM tools WHERE name = {0}'
+                        ' and note = {1}'.format(quote(parts[0]), quote(parts[1])))
+        print_result(res1)
+        print_result(res2)
+        return True
+
+    if res1:
+        id = int(res1[0][0])
+    elif res2:
+        id = int(res2[0][0])
+    else:
+        print('No match')
+        return True
+
+    db.query('DELETE FROM tools WHERE id = {0}'.format(id))
+    db.commit()
+    return True
+
+def delete_result(db, res):
+    pass
 
 if __name__ == "__main__":
     argc = len(sys.argv)
@@ -54,14 +129,14 @@ if __name__ == "__main__":
     # if we got query given on command line, process it and exit
     if argc == 2:
         res = db.query(sys.argv[1])
-        for r in res:
-            print(r)
+        print_result(res)
 
         db.commit() # commit result if it was modification
         sys.exit(0)
 
     line = get_input()
     while not line is None:
+        err = False
         if line == 'mysql':
             host, user, passwd, db = get_db_credentials()
             check_db_credentials(host, user, passwd, db)
@@ -70,10 +145,17 @@ if __name__ == "__main__":
             os.system(cmd)
         elif line == 'help':
             print_help()
+        elif line.startswith('delete '):
+            if not cmd_delete(db, line[7:]):
+                err = True
+            else:
+                print('OK')
         else:
             if line != '':
-                print('Unknown command')
+                err = True
 
+        if err:
+            print('Wrong command')
         line = get_input()
 
     print('') # print last newline
