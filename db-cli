@@ -54,6 +54,7 @@ if __name__ == "__main__":
         for r in res:
             print(r)
 
+        db.commit() # commit result if it was modification
         sys.exit(0)
 
     line = get_input()
