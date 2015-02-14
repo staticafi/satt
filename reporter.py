@@ -190,6 +190,28 @@ class RatingMethod(object):
         self.true_correct = res[3]
         self.true_incorrect = res[4]
 
+    def points(self, ok, res):
+       if res is None:
+           return 0
+
+       res = res.lower()
+
+       if res == 'unknown' or res == 'error' or res == 'timeout':
+           return self.unknown
+       elif res == 'false':
+           if ok:
+               return self.false_correct
+           else:
+               return self.false_incorrect
+       elif res == 'true':
+           if ok:
+               return self.true_correct
+           else:
+               return self.true_incorrect
+       else:
+           dbg('Unknown result, skipping points')
+           return 0
+
 def None2Zero(x):
     if x is None:
         return 0
@@ -322,28 +344,6 @@ class MysqlReporter(BenchmarkReport):
 
             return 0
 
-        def points(ok, res, rm):
-            if res is None:
-                return 0
-
-            res = res.lower()
-
-            if res == 'unknown' or res == 'error' or res == 'timeout':
-                return rm.unknown
-            elif res == 'false':
-                if ok:
-                    return rm.false_correct
-                else:
-                    return rm.false_incorrect
-            elif res == 'true':
-                if ok:
-                    return rm.true_correct
-                else:
-                    return rm.true_incorrect
-            else:
-                dbg('Unknown result, skipping points')
-                return 0
-
         tool_id, year_id = self._updateDb(rb)
 
         q = """
@@ -387,7 +387,7 @@ class MysqlReporter(BenchmarkReport):
         VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', {7}, '{8}')
         """.format(tool_id, task_id, rb.result.lower(),
                    is_correct(correct_result, rb.result),
-                   points(ic, rb.result, self._rating_methods), None2Zero(rb.time),
+                   self._rating_methods.points(ic, rb.result), None2Zero(rb.time),
                    None2Zero(rb.memory), Empty2Null(rb.output), self.run_id)
         self._db(q)
 
