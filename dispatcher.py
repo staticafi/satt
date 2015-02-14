@@ -104,7 +104,7 @@ class Dispatcher(object):
         self._poller = select.poll()
         self._fds = dict()
         self._benchmarks_count = 0
-        self._benchmarks_ran = 0
+        self._benchmarks_done = 0
 
         # initialize benchmarks_count
         for t in tasks:
@@ -162,7 +162,6 @@ class Dispatcher(object):
             return None
 
         self._registerBenchmark(bench)
-        self._benchmarks_ran += 1
 
         return bench
 
@@ -210,7 +209,7 @@ class Dispatcher(object):
                         # something went wrong - queue this one again
                         satt_log('Running benchmark again');
                         # we must take this one as it was not running yet
-                        self._benchmarks_ran -= 1
+                        self._benchmarks_done -= 1
 
                         # XXX we do not have a mechanism how to track
                         # how many times the benchmark ran, so it may happen
@@ -221,6 +220,12 @@ class Dispatcher(object):
                         # P. S message for future me: If you read this, we probably hit
                         # this error and you hate me and my wickidness - just sorry.
                         bench.task.readd(bench)
+
+                    self._benchmarks_done += 1
+                    # set progress
+                    if self._benchmarks_done != 0:
+                        prgs = float(self._benchmarks_done) / self._benchmarks_count
+                        self._report.progress(int(prgs * 100))
 
                     # run new benchmark
                     self._runBenchmark(bench.task)
