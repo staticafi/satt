@@ -8,7 +8,9 @@ remote-dir = ~
 # set of benchmarks
 year = 2015
 benchmarks = ~/benchmarks
-exclude=ECA.set,Stateful.set,DriverChallenges.set
+exclude = ECA.set \
+	  Stateful.set \
+	  DriverChallenges.set
 
 # list of machines
 machines = stations.txt
@@ -18,13 +20,18 @@ machines = stations.txt
 # '*' stands for every set
 # {benchmark-dirname} is special variable that expands to the directory containing
 # benchmark
-params = *: --timeout=120 --debug --prp={remote-dir}/{benchmark-dirname}/ALL.prp, DeviceDrivers64: --64
+params = DeviceDrivers64: --64, \
+	 *		: --timeout=120 --debug \
+	 		  --prp={remote-dir}/{benchmark-dirname}/ALL.prp
 
 # use variables, whoohoo!
 # variables can be any of defined above and two
 # special: {machine} and {benchmark} (or synonym {file}) and {params}
 # I think meaning is pretty clear
-remote-cmd = {ssh-cmd} {ssh-user}@{machine} '{remote-dir}/satt/symbiotic/run_benchmark {params} {remote-dir}/symbiotic {remote-dir}/{benchmark}'
+remote-cmd = {ssh-cmd} {ssh-user}@{machine} \
+	     '{remote-dir}/satt/symbiotic/run_benchmark {params} \
+	     						{remote-dir}/symbiotic \
+							{remote-dir}/{benchmark}'
 
 # run symbiotic-sync script
 sync-cmd = symbiotic/symbiotic-sync.sh {ssh-user}@{machine} '{remote-dir}' {tool-dir}

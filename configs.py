@@ -149,9 +149,21 @@ def parse_configs(path = 'symbiotic/config'):
         err("Failed opening configuration file ({0}): {1}"
             .format(path, e.strerror))
 
+    accline = None
+
     for line in f:
         line = line.strip()
+
         if not line or line[0] == '#':
+            continue
+
+        if not accline is None:
+            line = accline + line
+            accline = None
+
+        # if \ is on the end of line, append next line
+        if line[-1] == '\\':
+            accline = line[:-1]
             continue
 
         key, val = line.split('=', 1)
