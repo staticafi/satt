@@ -24,6 +24,7 @@
 # On arran we have only python2, so use python2
 
 import os
+import sys
 from database import get_db_credentials, check_db_credentials, DatabaseConnection
 
 def print_help():
@@ -39,7 +40,21 @@ def get_input(prompt = '> '):
         return None
 
 if __name__ == "__main__":
+    argc = len(sys.argv)
+
+    if argc > 2:
+        sys.stderr.write('0 or 1 argument excepted (mysql query)\n')
+        sys.exit(1)
+
     db = DatabaseConnection()
+
+    # if we got query given on command line, process it and exit
+    if argc == 2:
+        res = db.query(sys.argv[1])
+        for r in res:
+            print(r)
+
+        sys.exit(0)
 
     line = get_input()
     while not line is None:
