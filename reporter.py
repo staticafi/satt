@@ -27,7 +27,7 @@
 # On arran we have only python2, so use python2
 
 import os
-from time import time
+from time import time, strftime
 
 import configs
 
@@ -37,6 +37,9 @@ from log import satt_log
 
 class BenchmarkReport(object):
     """ Report results of benchmark. This is a abstract class """
+
+    def __init__(self):
+        self._progress = 0
 
     def report(self, msg, rb):
         """
@@ -76,6 +79,9 @@ class BenchmarkReport(object):
     def done(self, rb):
         " The benchmark is done"
         raise NotImplementedError("Child class needs to override this method")
+
+    def progress(self, progress):
+        self._progress = progress
 
     def result(self, rb, msg):
         m = msg.upper()
@@ -142,9 +148,10 @@ class StdoutReporter(BenchmarkReport):
             else:
                 color = 'green'
 
+        prefix = '[{0} | {1}%]  '.format(strftime('%H:%M:%S'), self._progress)
         satt_log('{0} - {1}: {2}'.format(rb.category,
                                          os.path.basename(name),
-                                         rb.result), color)
+                                         rb.result), color, prefix = prefix)
 
 
         if rb.result is None or rb.result == 'ERROR':
@@ -196,6 +203,8 @@ def Empty2Null(x):
 
 class MysqlReporter(BenchmarkReport):
     def __init__(self):
+        BenchmarkReport.__init__(self)
+
         # use this to print out what is happening
         self._stdout = StdoutReporter()
         self.run_id = int(time())
@@ -217,6 +226,10 @@ class MysqlReporter(BenchmarkReport):
         satt_log('Connected to database: MySQL version {0}'.format(ver))
 
         self._rating_methods = RatingMethod(self._db)
+
+    def progress(self, progress):
+        # we must redirect progress to stdout
+        self._stdout.progress(progress)
 
     def _db(self, query):
         ret = None

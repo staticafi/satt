@@ -42,18 +42,20 @@ def satt_log_init(lfile):
 
     atexit.register(lambda: log_file.close())
 
-def satt_log(msg, color = None, stdout = True):
+def satt_log(msg, color = None, stdout = True, prefix = None):
     global log_file
     assert not log_file is None
 
-    tm = '[{0}]  '.format(time.strftime('%H:%M:%S'))
-    log_file.write(tm)
+    # prefix None means time
+    if prefix is None:
+        prefix = '[{0}]  '.format(time.strftime('%H:%M:%S'))
+    log_file.write(prefix)
     log_file.write(msg)
     log_file.write('\n')
     log_file.flush()
 
     if stdout:
-        sys.stdout.write(tm)
+        sys.stdout.write(prefix)
 
         if color is None:
             print(msg)

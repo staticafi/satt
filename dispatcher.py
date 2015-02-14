@@ -222,6 +222,9 @@ class Dispatcher(object):
                         # this error and you hate me and my wickidness - just sorry.
                         bench.task.readd(bench)
 
+                    # set progress
+                    self._report.progress(int(float(self._benchmarks_count) / self._benchmarks_ran))
+
                     # run new benchmark
                     self._runBenchmark(bench.task)
 
