@@ -34,7 +34,7 @@ import configs
 from common import err, dbg
 from dispatcher import RunningTask
 from log import satt_log
-from database import get_db_credentials, check_db_credentials
+from database import DatabaseConnection
 
 class BenchmarkReport(object):
     """ Report results of benchmark. This is a abstract class """
@@ -168,11 +168,6 @@ class StdoutReporter(BenchmarkReport):
 
         return True
 
-try:
-    import MySQLdb as db
-except ImportError:
-    dbg('Do not have MySQLdb module')
-
 class RatingMethod(object):
     def __init__(self, query_func):
         res = query_func('SELECT unknown, false_correct, false_incorrect,'
@@ -236,49 +231,19 @@ class MysqlReporter(BenchmarkReport):
         # replace apostrophes in tool_params
         self.tool_params = self.tool_params.replace('\'', '\\\'')
 
-        host, user, pw, dtb = get_db_credentials()
-        check_db_credentials(host, user, pw, dtb)
+        self._db = DatabaseConnection()
 
-        try:
-            self._conn = db.connect(host = host, user = user,
-                                    passwd = pw, db = dtb)
-            self._cursor = self._conn.cursor()
-        except NameError: # we do not have MySQLdb module
-            err('Do not have MySQLdb module')
-        except db.Error as e:
-            err('{0}\n'.format(str(e)))
-
-        ver = self._db('SELECT VERSION()')[0][0]
+        ver = self._db.query('SELECT VERSION()')[0][0]
         satt_log('Connected to database: MySQL version {0}'.format(ver))
 
-        self._rating_methods = RatingMethod(self._db)
+        self._rating_methods = RatingMethod(self._db.query)
 
     def progress(self, progress):
         # we must redirect progress to stdout
         self._stdout.progress(progress)
 
-    def _db(self, query):
-        ret = None
-
-        try:
-            self._cursor.execute(query)
-            ret = self._cursor.fetchall()
-        except db.Error as e:
-            err('Failed querying db: {0}\n\n{1}'.format(e.args[1], query))
-
-        return ret
-
-    def __del__(self):
-        try:
-            self._conn.close()
-        except AttributeError:
-            # this means that we do not have MySQLdb module
-            pass
-
-        del self
-
     def _commit(self):
-        self._conn.commit()
+        self._db.commit()
 
     def _updateDb(self, rb):
         ver = rb.versions.strip()
@@ -286,7 +251,7 @@ class MysqlReporter(BenchmarkReport):
         q = """
         SELECT id FROM years WHERE year = '{0}';
         """.format(configs.configs['year']);
-        res = self._db(q)
+        res = self._db.query(q)
         if not res:
             err('Do not have year {0}. If this is not typo, '
                 'update the database and benchmarks'.format(configs.configs['year']))
@@ -299,7 +264,7 @@ class MysqlReporter(BenchmarkReport):
         WHERE name = '{0}' and version = '{1}'
               and params = '{2}' and year_id = '{3}';
         """.format(configs.configs['tool'], ver, self.tool_params, year_id)
-        res = self._db(q)
+        res = self._db.query(q)
         if not res:
             q2 = """
             INSERT INTO tools
@@ -308,10 +273,10 @@ class MysqlReporter(BenchmarkReport):
             """.format(configs.configs['tool'], year_id,
                        ver, self.tool_params, configs.configs['tool'],
                        Empty2Null(configs.configs['note']))
-            self._db(q2)
+            self._db.query(q2)
 
             # get new tool_id
-            res = self._db(q)
+            res = self._db.query(q)
             assert len(res) == 1
 
         tool_id = res[0][0]
@@ -355,7 +320,7 @@ class MysqlReporter(BenchmarkReport):
         WHERE
             year_id = '{0}' and name = '{1}';
         """.format(year_id, rb.category)
-        res = self._db(q)
+        res = self._db.query(q)
         if not res:
             rb.dumpToFile('Do not have given category')
             satt_log('^^ dumped to file (unknown category)')
@@ -368,7 +333,7 @@ class MysqlReporter(BenchmarkReport):
         SELECT id, correct_result FROM tasks
         WHERE name = '{0}' and category_id = '{1}';
         """.format(get_name(rb.name), cat_id)
-        res = self._db(q)
+        res = self._db.query(q)
 
         # we do not have such a task??
         if not res:
@@ -393,7 +358,7 @@ class MysqlReporter(BenchmarkReport):
                    is_correct(correct_result, rb.result),
                    self._rating_methods.points(ic, rb.result), None2Zero(rb.time),
                    None2Zero(rb.memory), Empty2Null(rb.output), self.run_id)
-        self._db(q)
+        self._db.query(q)
 
         self._commit()
 

@@ -24,12 +24,7 @@
 # On arran we have only python2, so use python2
 
 import os
-from database import get_db_credentials, check_db_credentials
-
-host=None
-user=None
-passwd=None
-db=None
+from database import get_db_credentials, check_db_credentials, DatabaseConnection
 
 def print_help():
     print('\tmysql\t\tRun mysql client')
@@ -43,19 +38,15 @@ def get_input(prompt = '> '):
     except KeyboardInterrupt:
         return None
 
-def database_connect():
-    global host, user, passwd, db
-    host, user, passwd, db = get_db_credentials()
-    check_db_credentials(host, user, passwd, db)
-
-    # XXX connect
-
 if __name__ == "__main__":
-    database_connect()
+    db = DatabaseConnection()
 
     line = get_input()
     while not line is None:
         if line == 'mysql':
+            host, user, passwd, db = get_db_credentials()
+            check_db_credentials(host, user, passwd, db)
+
             cmd = 'mysql --user={0} --password={1} --host={2} {3}'.format(user, passwd, host, db)
             os.system(cmd)
         elif line == 'help':

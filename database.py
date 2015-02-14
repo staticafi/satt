@@ -26,7 +26,31 @@
 #
 # On arran we have only python2, so use python2
 
+import MySQLdb
+
 from common import err
+
+class DatabaseConnection(object):
+    def __init__(self):
+        self._conn, self._cursor = database_connect()
+
+    def __del__(self):
+        self._conn.close()
+        del self
+
+    def query_unchecked(self, q):
+        self._cursor.execute(q)
+        return self._cursor.fetchall()
+
+    def query(self, q):
+        try:
+            return self.query_unchecked(q)
+        except MySQLdb.Error as e:
+            err('Failed querying db: {0}\n\n{1}'.format(e.args[1], q))
+
+    def commit(self):
+        self._conn.commit()
+
 
 def get_db_credentials(path = 'database/config'):
     try:
@@ -73,3 +97,15 @@ def check_db_credentials(host, user, passwd, db):
     if db is None or db == '':
         err('Missing \'database\' for database')
 
+def database_connect():
+    host, user, passwd, db = get_db_credentials()
+    check_db_credentials(host, user, passwd, db)
+
+    try:
+        conn = MySQLdb.connect(host = host, user = user,
+                               passwd = passwd, db = db)
+        cursor = conn.cursor()
+    except MySQLdb.Error as e:
+        err('{0}\n'.format(str(e)))
+
+    return conn, cursor
