@@ -105,20 +105,15 @@ if __name__ == "__main__":
     do_sync(tasks)
 
     try:
-        get_benchmarks(configs['benchmarks'], tasks)
+        num = get_benchmarks(configs['benchmarks'], tasks)
     except KeyboardInterrupt:
         satt_log('Stopping...')
 
-    # TODO do it more efficiently...
-    can_run = False
-    for t in tasks:
-        if t.getCount() > 0:
-            can_run = True
-            break;
-
-    if not can_run:
+    if num == 0 or num is None:
         err('No benchmarks queued for running'
             ', is the path to the benchmarks alright?')
+    else:
+        satt_log('Got {0} benchmarks to run'.format(num))
 
     satt_log('\o/ Let the show begin! \o/')
     dispatcher = Dispatcher(tasks)

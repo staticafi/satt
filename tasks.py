@@ -69,6 +69,7 @@ class Task(object):
         self._machine = mach
         self._benchmarks = []
         self._parallel_no = parallel_no
+        self._count = 0
 
     def getParallel(self):
         return self._parallel_no
@@ -82,6 +83,7 @@ class Task(object):
     def add(self, test):
         """ Add new test to the task """
         self._benchmarks.append(test)
+        self._count += 1
 
     def readd(self, rb):
         """ Add benchmark that already ran """
@@ -124,6 +126,7 @@ class Task(object):
         if not self._benchmarks:
             return None
 
+        self._count -= 1
         name, cat = self._benchmarks.pop()
 
         ecmd = self.expandSpecialVariables(cmd, name, cat)
@@ -249,3 +252,10 @@ def get_benchmarks(files, tasks):
                 dirpath = os.path.dirname(path)
                 basename = os.path.basename(path)
                 assign_set(dirpath, basename, tasks)
+
+    # return number of found benchmarks
+    num = 0
+    for t in tasks:
+        num += t.getCount()
+
+    return num
