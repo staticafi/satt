@@ -103,6 +103,12 @@ class Dispatcher(object):
         self._tasks = tasks
         self._poller = select.poll()
         self._fds = dict()
+        self._benchmarks_count = 0
+        self._benchmarks_ran = 0
+
+        # initialize benchmarks_count
+        for t in tasks:
+            self._benchmarks_count += t.getCount()
 
         # we must import it only localy, otherwise we get
         # cyclic dependency
@@ -120,6 +126,7 @@ class Dispatcher(object):
         """ Add new task """
 
         self._tasks.append(task)
+        self._benchmarks_count += task.getCount()
 
     def _registerFd(self, fd, data):
         """ Add new fd to the poller """
@@ -155,6 +162,7 @@ class Dispatcher(object):
             return None
 
         self._registerBenchmark(bench)
+        self._benchmarks_ran += 1
 
         return bench
 
@@ -201,6 +209,8 @@ class Dispatcher(object):
                     if not self._report.done(bench):
                         # something went wrong - queue this one again
                         satt_log('Running benchmark again');
+                        # we must take this one as it was not running yet
+                        self._benchmarks_ran -= 1
 
                         # XXX we do not have a mechanism how to track
                         # how many times the benchmark ran, so it may happen
