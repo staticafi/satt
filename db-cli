@@ -117,6 +117,28 @@ def delete_tool(db, tool):
 def delete_result(db, res):
     pass
 
+def cmd_stats():
+    res = db.query('SELECT year, count(*) '
+                   'FROM tasks '
+                        'INNER JOIN categories ON category_id = categories.id '
+                        'INNER JOIN years ON year_id = years.id '
+                    'GROUP BY year_id')
+    print('Number of tasks:')
+    print(' -- Year -- Count --\n')
+    for r in res:
+        print('   {0:^6}  {1:^6}'.format(r[0], r[1]))
+
+    res = db.query('SELECT year, count(*) '
+                   'FROM task_results '
+                        'INNER JOIN tasks ON task_id = tasks.id '
+                        'INNER JOIN categories ON category_id = categories.id '
+                        'INNER JOIN years ON year_id = years.id '
+                    'GROUP BY year_id')
+    print('\nResults in database:')
+    print(' -- Year -- Count --\n')
+    for r in res:
+        print('   {0:^6}  {1:^6}'.format(r[0], r[1]))
+
 if __name__ == "__main__":
     argc = len(sys.argv)
 
@@ -150,6 +172,8 @@ if __name__ == "__main__":
                 err = True
             else:
                 print('OK')
+        elif line == 'stats':
+            cmd_stats()
         else:
             if line != '':
                 err = True
