@@ -34,6 +34,7 @@ import configs
 from common import err, dbg
 from dispatcher import RunningTask
 from log import satt_log
+from database import get_db_credentials, check_db_credentials
 
 class BenchmarkReport(object):
     """ Report results of benchmark. This is a abstract class """
@@ -235,9 +236,12 @@ class MysqlReporter(BenchmarkReport):
         # replace apostrophes in tool_params
         self.tool_params = self.tool_params.replace('\'', '\\\'')
 
+        host, user, pw, dtb = get_db_credentials()
+        check_db_credentials(host, user, pw, dtb)
+
         try:
-            self._conn = db.connect('localhost', 'statica',
-                                    'statica', 'statica')
+            self._conn = db.connect(host = host, user = user,
+                                    passwd = pw, db = dtb)
             self._cursor = self._conn.cursor()
         except NameError: # we do not have MySQLdb module
             err('Do not have MySQLdb module')
