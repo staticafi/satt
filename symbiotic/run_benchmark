@@ -83,6 +83,10 @@ def printVersions(symbiotic_dir):
     version += '-scripts:{0}'.format(f.readline().strip())
     f.close()
 
+    f = open(os.path.join(symbiotic_dir, 'KLEE_VERSION'), 'r')
+    version += '-klee:{0}'.format(f.readline().strip())
+    f.close()
+
     print('=== VERSIONS')
     print(version)
 
