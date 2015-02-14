@@ -28,7 +28,10 @@ import sys
 from database import get_db_credentials, check_db_credentials, DatabaseConnection
 
 def print_help():
-    print('\tmysql\t\tRun mysql client')
+    print('When given query as the only argument on command line,\n'
+          'it will be processed and the tool will exit.')
+    print('\nInteractively you can use these commands:')
+    print('\tmysql\t\tLog into interactive mysql')
 
 def get_input(prompt = '> '):
     try:

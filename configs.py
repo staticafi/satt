@@ -81,6 +81,12 @@ that will expand to current benchmark file and remote machine.
 
 Command-line argument have higher priority. Tool defaults to 'symbiotic'
 
+Database is supposed to have configuration in database/config with following format:
+host=[host]
+user=[user]
+password=[passwd]
+db=[database]
+
 Allowed keys in config file:
 """)
 
