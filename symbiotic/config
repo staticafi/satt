@@ -8,8 +8,8 @@ remote-dir = ~
 # set of benchmarks
 year = 2015
 benchmarks = ~/benchmarks
-exclude = ECA.set \
-	  Stateful.set \
+exclude = ECA.set, \
+	  Stateful.set, \
 	  DriverChallenges.set
 
 # list of machines

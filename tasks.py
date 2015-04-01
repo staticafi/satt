@@ -180,6 +180,16 @@ def assign_set(dirpath, path, tasks):
     epath = expand(dirpath)
     os.chdir(epath)
 
+    # there is not so much of .set files, so there won't be
+    # any significant time penalty if we parse the configs
+    # here every time
+    exclude = configs.configs['exclude'].split(',')
+
+    bname = os.path.basename(path)
+    if bname in exclude:
+        dbg('Skiping {0} benchmarks'.format(bname))
+        return False
+
     try:
         f = open(path, 'r')
     except OSError as e:
@@ -205,6 +215,8 @@ def assign_set(dirpath, path, tasks):
     f.close()
     os.chdir(old_dir)
 
+    return n != 0
+
 def assign_set_dir(dirpath, tasks):
     dirpath = '{0}/{1}'.format(dirpath, configs.configs['year'])
     edirpath = os.path.expanduser(dirpath)
@@ -217,20 +229,14 @@ def assign_set_dir(dirpath, tasks):
             .format(edirpath, e.strerror))
 
     gotany = False
-    exclude = configs.configs['exclude'].split(',')
 
     for f in files:
         if f[-4:] != '.set':
             continue
 
-        if f in exclude:
-            dbg('Skiping {0} benchmarks'.format(f))
-            continue
-
         # this path needs to be relative, since it can appear
         # on remote computer
-        assign_set(dirpath, f, tasks)
-        gotany = True
+        gotany |= assign_set(dirpath, f, tasks)
 
     if not gotany:
         sys.stderr.write('Warning: Haven\'t found any .set file\n')
