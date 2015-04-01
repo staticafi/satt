@@ -188,6 +188,7 @@ def assign_set(dirpath, path, tasks):
     bname = os.path.basename(path)
     if bname in exclude:
         dbg('Skiping {0} benchmarks'.format(bname))
+        os.chdir(old_dir)
         return False
 
     try:
