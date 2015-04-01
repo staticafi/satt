@@ -32,7 +32,7 @@ from os.path import dirname
 from subprocess import Popen, PIPE
 from time import strftime
 
-from common import err, dbg, create_lockfile, colored
+from common import err, dbg, create_lockfile, colored, LOCKFILE
 from dispatcher import Dispatcher
 from sync import do_sync
 from configs import parse_configs, parse_command_line, usage, configs
@@ -96,7 +96,9 @@ if __name__ == "__main__":
     chdir(working_dir)
 
     if not create_lockfile():
-        err('Another instance of satt is running')
+        global LOCKFILE
+        err('Another instance of satt is running. If this is not true,'
+            ' remove {0}'.format(LOCKFILE))
 
     start_log()
 

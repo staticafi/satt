@@ -31,6 +31,7 @@ import time
 from configs import configs
 
 LOCKFILE = '.satt-running.lock'
+LOCKFILE_ABSPATH = None
 
 def colored(msg, c = None):
     isatty = os.isatty(sys.stdout.fileno())
@@ -64,7 +65,24 @@ def dbg(msg):
 def expand(path):
     return os.path.expanduser(os.path.expandvars(path))
 
+def delete_lockfile():
+    global LOCKFILE_ABSPATH
+
+    if LOCKFILE_ABSPATH is None:
+        return
+
+    try:
+        os.unlink(LOCKFILE_ABSPATH)
+    except OSError:
+        err('Failed removing lockfile. '
+            'Do it manually by \'rm {0}\''.format(LOCKFILE_ABSPATH))
+
+    LOCKFILE_ABSPATH = None
+
 def create_lockfile():
+    global LOCKFILE
+    global LOCKFILE_ABSPATH
+
     try:
         fd = os.open(LOCKFILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except OSError as e:
@@ -76,6 +94,8 @@ def create_lockfile():
     os.write(fd, time.ctime())
     os.close(fd)
 
-    atexit.register(lambda: os.unlink(LOCKFILE))
+    LOCKFILE_ABSPATH = '{0}/{1}'.format(os.getcwd(), LOCKFILE)
+
+    atexit.register(delete_lockfile)
 
     return True
