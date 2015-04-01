@@ -38,7 +38,7 @@ def usage():
 Static analysis tools tester, 2014 - 2015
 -------------------------------------
 
-Usage: satt OPTS tool
+Usage: satt [OPTS] [tool]
 
 OPTS can be:
     --machines=file.txt             File with machines
