@@ -48,6 +48,12 @@ class DatabaseConnection(object):
         except MySQLdb.Error as e:
             err('Failed querying db: {0}\n\n{1}'.format(e.args[1], q))
 
+    def query_with_exception_handler(self, q, handler, data):
+        try:
+            return self.query_unchecked(q)
+        except MySQLdb.Error as e:
+            handler(e.args, data)
+
     def commit(self):
         self._conn.commit()
 
