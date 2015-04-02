@@ -103,6 +103,14 @@ if __name__ == "__main__":
     start_log()
 
     tool = parse_command_line()
+    # if user gave benchmarks to run on command line,
+    # then he will probably wait for results, so do not
+    # send an e-mail
+    if configs.has_key('benchmarks'):
+        send_email = False
+    else:
+        send_email = True
+
     configs = parse_configs('{0}/config'.format(tool))
 
     # options from command line are of higher priority
@@ -142,4 +150,10 @@ if __name__ == "__main__":
 
     satt_log('\o/ Let the show begin! \o/')
     dispatcher = Dispatcher(tasks)
+
+    # run the benchmarks
     dispatcher.run()
+
+    # notify user about the results via e-mail
+    if send_email:
+        dispatcher.sendResults()

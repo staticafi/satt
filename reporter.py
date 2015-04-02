@@ -121,6 +121,9 @@ class BenchmarkReport(object):
         except ValueError:
             rb.output += 'TIME CONSUMED: {0}\n'.format(msg)
 
+    def sendEmail(self, server, from_addr, to_addrs):
+        pass
+
 class StdoutReporter(BenchmarkReport):
     """ Report results of benchmark to stdout """
 
@@ -219,6 +222,15 @@ def Empty2Null(x):
 
     return '\'{0}\''.format(x.strip())
 
+def is_correct(res1, res2):
+    if res1 is None or res2 is None:
+        return 0
+
+    if res1.upper() == res2.upper():
+        return 1
+
+    return 0
+
 class MysqlReporter(BenchmarkReport):
     def __init__(self):
         BenchmarkReport.__init__(self)
@@ -304,15 +316,6 @@ class MysqlReporter(BenchmarkReport):
 
             return name[i + 1:]
 
-        def is_correct(res1, res2):
-            if res1 is None or res2 is None:
-                return 0
-
-            if res1.upper() == res2.upper():
-                return 1
-
-            return 0
-
         tool_id, year_id = self._updateDb(rb)
 
         q = """
@@ -381,3 +384,55 @@ class MysqlReporter(BenchmarkReport):
         self._commit()
 
         return True
+
+
+    def sendEmail(self, server, from_addr, to_addrs):
+        import smtplib
+        from email.mime.text import MIMEText
+
+        started_at = configs.configs['started_at']
+
+        text = """
+This is automatically generated message. Do not answer.
+=======================================================
+
+Satt on tool {0} started at {1}, finished {2}
+with parameters: {3}
+
+Results:
+
+""".format(configs.configs['tool'],
+           started_at,
+           strftime('%Y-%m-%d-%H-%S'),
+           configs.configs['params'])
+
+        q = """
+        SELECT result, is_correct, count(*)
+            FROM task_results
+            WHERE run_id = {0}
+            GROUP BY result, is_correct""".format(self.run_id)
+
+        res = self._db.query(q)
+        if not res:
+            err('No results stored to db after this run?')
+
+        for row in res:
+            if row[1] == 0:
+                text += '{0} {1}: {2}\n'.format(row[0],
+                                              'incorrect', row[2])
+            else:
+                text += '{0} {1}: {2}\n'.format(row[0],
+                                              'correct', row[2])
+
+        msg = MIMEText(text)
+        msg['Subject'] = 'Satt results from {0}'.format(started_at)
+        msg['From'] = from_addr
+        msg['To'] = 'statica@fi.muni.cz'
+
+        s = smtplib.SMTP(server)
+        ret = s.sendmail(from_addr, to_addrs, msg.as_string())
+        s.quit()
+
+        for r in ret:
+            dbg('Failed sending e-mail to {0},'
+                'err: {1}'.format(r[0], r[1]))

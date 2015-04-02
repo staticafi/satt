@@ -122,6 +122,31 @@ class Dispatcher(object):
         else:
             self._report = report
 
+        self._dontSendResults = False
+
+    def sendResults(self):
+        """ Send results by e-mail to given people """
+
+        if self._dontSendResults:
+            return
+
+        emails = []
+
+        try:
+            f = open('emails.txt')
+            for email in f:
+                emails.append(email.strip())
+            f.close()
+        except IOError as e:
+            dbg('Not sending email with results, because'
+                ' error occured while processing file with emails')
+
+        # if we don't have any e-mail, we don't have to send anything
+        if not emails:
+            return
+
+        self._report.sendEmail('localhost',
+                               'statica@fi.muni.cz', emails)
     def add(self, task):
         """ Add new task """
 
@@ -247,5 +272,6 @@ class Dispatcher(object):
             # monitor the tasks
             self._monitorTasks()
         except KeyboardInterrupt:
+            self._dontSendResults = True
             self._killTasks()
             satt_log('Stopping...')
