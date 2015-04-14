@@ -87,6 +87,10 @@ def printVersions(symbiotic_dir):
     version += '-klee:{0}'.format(f.readline().strip())
     f.close()
 
+    f = open(os.path.join(symbiotic_dir, 'MINISAT_VERSION'), 'r')
+    version += '-minisat:{0}'.format(f.readline().strip())
+    f.close()
+
     f = open(os.path.join(symbiotic_dir, 'STP_VERSION'), 'r')
     version += '-stp:{0}'.format(f.readline().strip())
     f.close()
