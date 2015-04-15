@@ -27,7 +27,7 @@
 # On arran we have only python2, so use python2
 
 import os
-from time import time, strftime
+from time import time, strftime, strptime
 
 import configs
 
@@ -390,7 +390,10 @@ class MysqlReporter(BenchmarkReport):
         import smtplib
         from email.mime.text import MIMEText
 
-        started_at = configs.configs['started_at']
+        time_format = '%Y-%m-%d-%H-%S'
+        raw_started_at = strptime(configs.configs['started_at'], time_format)
+        started_at = strftime('%a %b %d %H:%M:%S %Y', raw_started_at)
+        finished_at = strftime('%a %b %d %H:%M:%S %Y')
 
         text = """
 This is automatically generated message. Do not answer.
@@ -398,13 +401,18 @@ This is automatically generated message. Do not answer.
 
 Satt on tool {0} started at {1}, finished {2}
 with parameters: {3}
+on benchmarks from year {4}
+
+Note: {5}
 
 Results:
 
 """.format(configs.configs['tool'],
            started_at,
-           strftime('%Y-%m-%d-%H-%S'),
-           configs.configs['params'])
+           finished_at,
+           configs.configs['params'],
+           configs.configs['year'],
+           configs.configs['note'])
 
         q = """
         SELECT result, is_correct, count(*)
@@ -416,13 +424,32 @@ Results:
         if not res:
             err('No results stored to db after this run?')
 
+        total = 0
         for row in res:
-            if row[1] == 0:
-                text += '{0} {1}: {2}\n'.format(row[0],
-                                              'incorrect', row[2])
-            else:
-                text += '{0} {1}: {2}\n'.format(row[0],
-                                              'correct', row[2])
+            result = row[0]
+            if result == 'true' or result == 'false':
+                if row[1] == 0:
+                    result += ' incorrect'
+                else:
+                    result += ' correct'
+
+            text += '{0:<15} : {1}\n'.format(result, row[2])
+            total += row[2]
+
+        text += '\nTotal number of benchmarks: {0}'.format(total)
+
+        q = """SELECT tool_id FROM task_results
+               WHERE run_id = {0}""".format(self.run_id)
+        res = self._db.query(q)
+        if not res:
+            err('Failed querying db for tool\'s id')
+
+        tool_id = res[0][0]
+
+        text += '\n\nYou can check the results here:\n'
+        text += 'http://ben11.fi.muni.cz:3000/tools/{0}'.format(tool_id)
+
+        text += '\n\nHave a nice day!\n'
 
         msg = MIMEText(text)
         msg['Subject'] = 'Satt results from {0}'.format(started_at)
