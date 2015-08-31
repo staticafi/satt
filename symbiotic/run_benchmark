@@ -26,7 +26,7 @@ def stop_timeout():
     signal.signal(signal.SIGALRM, signal.SIG_DFL)
     signal.alarm(0)
 
-def set_environ(_debug = False, _slce = True):
+def set_environ(_debug = False, _slce = True, klee_params = None):
     def env_prepend(env, what):
         s = '{0}:{1}'.format(what, os.environ[env])
         os.environ[env] = s
@@ -39,9 +39,12 @@ def set_environ(_debug = False, _slce = True):
     else:
         os.environ['SLICE'] = '0'
 
+    if not klee_params is None:
+        os.environ['KLEE_PARAMS'] = klee_params
+
 def run_symbiotic(symbiotic_location, benchmark, _debug = False,
-                  slce = True, prp = None, arch = None):
-    set_environ(_debug, slce)
+                  slce = True, prp = None, arch = None, klee_params = None):
+    set_environ(_debug, slce, klee_params)
 
     cmd = ['{0}/runme'.format(symbiotic_location)]
     if not prp is None:
@@ -102,7 +105,8 @@ def parse_args():
     try:
         opts, args = getopt.getopt(sys.argv[1:], '', ['timeout=',
                                                       'debug', 'no-slice',
-                                                      '64', 'prp='])
+                                                      '64', 'prp=',
+                                                      'klee-params='])
     except getopt.GetoptError as e:
         print('{0}'.format(str(e)))
         sys.exit(1)
@@ -112,6 +116,7 @@ def parse_args():
     slce = True
     arch = None
     prp = None
+    klee_params = None
 
     for opt, arg in opts:
         if opt == '--debug':
@@ -124,8 +129,10 @@ def parse_args():
             arch = '64bit'
         elif opt == '--prp':
             prp = arg
+        elif opt == '--klee-params':
+            klee_params = arg
 
-    return (args, timeout, debug, slce, prp, arch)
+    return (args, timeout, debug, slce, prp, arch, klee_params)
 
 def rmrf_tmp_dir(d):
     return os.system('rm -rf {0}'.format(d))
@@ -156,7 +163,7 @@ def sigpipe_handler(signum, data):
 
 if __name__ == "__main__":
 
-    pths, timeout, debug, slce, prp, arch = parse_args()
+    pths, timeout, debug, slce, prp, arch, klee_params = parse_args()
     if len(pths) == 2:
         symbiotic_dir = pths[0]
         benchmark = pths[1]
@@ -164,7 +171,7 @@ if __name__ == "__main__":
         print('=== RESULT')
         print('ERROR')
         print('Usage: run_benchmark [--timeout=n] [--debug] [--no-slice]'
-              '[--prp=property_file] [--64] symbiotic_dir benchmark')
+              '[--prp=property_file] [--64] [--klee-params=p] symbiotic_dir benchmark')
         sys.exit(1)
 
     printVersions(symbiotic_dir)
@@ -178,7 +185,7 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     try:
-        p = run_symbiotic(symbiotic_dir, src, debug, slce, prp, arch)
+        p = run_symbiotic(symbiotic_dir, src, debug, slce, prp, arch, klee_params)
         (out, err) = p.communicate()
         stop_timeout()
 
