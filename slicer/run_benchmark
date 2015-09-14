@@ -40,8 +40,6 @@ def set_environ(slicer_location):
     env_prepend('PATH', '/home-local/statica/build-slicer/llvm-3.6/build/bin')
 
 def run_slicer(slicer_location, benchmark, _debug = False):
-    set_environ(slicer_location)
-
     b = '{0}.bc'.format(benchmark)
 
     # compile benchmark
@@ -92,7 +90,7 @@ def printVersions(slicer_dir):
 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = p.communicate()
-    print(err, out)
+    print(err)
 
     sys.stdout.flush()
 
@@ -144,6 +142,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     tmpdir, src = copy_source_to_tmp(benchmark)
+
+    set_environ(slicer_dir)
 
     printVersions(slicer_dir)
     print('=== RESULT')
