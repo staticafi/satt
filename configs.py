@@ -48,6 +48,7 @@ OPTS can be:
     --debug                         Enable debugging messages
     --no-db                         Do not store result to database
     --year=[year]                   Specify year (git tag i. e. master, svcomp15, ...)
+    --save-new-task                 Create new tasks if they are not in database
     --exclude=set1.set,set2.set,... Do not run these benchmark sets. Ignored when
                                     standalone .set file is given in --benchmarks
                                     (applies only on directories).
@@ -105,7 +106,8 @@ configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'remote-cmd':'echo "ERROR: No command specified"',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic',
            'year':'master', 'params':{'*':''}, 'exclude':'',
-           'started_at' : time.strftime('%Y-%m-%d-%H-%S'), 'note':''}
+           'started_at' : time.strftime('%Y-%m-%d-%H-%S'), 'note':'',
+           'save-new-tasks' : 'no'}
 
 def params_from_string(pars, pard = None):
     " pars = params string, pard = params dictionary "
@@ -186,7 +188,8 @@ def parse_command_line():
         opts, args = getopt.getopt(sys.argv[1:], '',
                                   ['help', 'machines=', 'benchmarks=',
                                    'no-sync', 'no-db', 'sync=', 'debug',
-                                   'year=', 'exclude=', 'params=', 'note='])
+                                   'year=', 'exclude=', 'params=', 'note=',
+                                   'save-new-tasks'])
     except getopt.GetoptError as e:
         err('{0}'.format(str(e)))
 
@@ -204,6 +207,8 @@ def parse_command_line():
             configs['sync'] = arg
         elif opt == '--no-db':
             configs['no-db'] = 'yes'
+        elif opt == '--save-new-tasks':
+            configs['save-new-tasks'] = 'yes'
         elif opt == '--debug':
             configs['debug'] = 'yes'
         elif opt == '--year':

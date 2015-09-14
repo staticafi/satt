@@ -231,6 +231,42 @@ def is_correct(res1, res2):
 
     return 0
 
+def get_name(name):
+    n = 0
+    i = len(name) - 1
+    while i  >= 0:
+        if name[i] == '/':
+            n += 1
+
+            if n == 2:
+                break
+
+        i -= 1
+
+    return name[i + 1:]
+
+def get_correct_result(name):
+    """
+    Returns 'true' or 'false' depending on what of these words
+    occurrs earlier in the name
+    """
+
+    ti = name.find('true')
+    fi = name.find('false')
+
+    # we must have either one or the other
+    assert ti != -1 or fi != -1
+
+    if ti == -1:
+        return 'false'
+    elif fi == -1:
+        return 'true'
+    else: # both of the words are in the name
+        if ti < fi:
+            return 'true'
+        else:
+            return 'false'
+
 class MysqlReporter(BenchmarkReport):
     def __init__(self):
         BenchmarkReport.__init__(self)
@@ -295,26 +331,49 @@ class MysqlReporter(BenchmarkReport):
 
         return tool_id, year_id
 
+    def save_task(self, rb, cat_id):
+        """ Save unknown task into the database """
+
+        # create new task
+        name = get_name(rb.name)
+        q = """
+        INSERT INTO tasks
+          (name, category_id, correct_result, property)
+          VALUES('{0}', '{1}', '{2}', '{3}');
+        """.format(name, cat_id, get_correct_result(name), None)
+        self._db.query(q)
+
+        q = """
+        SELECT id, correct_result FROM tasks
+        WHERE name = '{0}' and category_id = '{1}';
+        """.format(name, cat_id)
+        return self._db.query(q)
+
+    def update_category(self, year_id, name):
+        """ Create new category in the database """
+
+        # create the a category in the database
+        q = """
+        INSERT INTO categories
+          (year_id, name) VALUES ('{0}', '{1}');
+        """.format(year_id, name)
+        self._db.query(q)
+
+        # return the new result
+        q = """
+        SELECT id FROM categories
+        WHERE
+            year_id = '{0}' and name = '{1}';
+        """.format(year_id, name)
+
+        return self._db.query(q)
+
     def done(self, rb):
         # print it after saving
         if not self._stdout.done(rb):
             # if there is a problem, the benchmark will run again, so do not
             # proceed further
             return False
-
-        def get_name(name):
-            n = 0
-            i = len(name) - 1
-            while i  >= 0:
-                if name[i] == '/':
-                    n += 1
-
-                    if n == 2:
-                        break
-
-                i -= 1
-
-            return name[i + 1:]
 
         tool_id, year_id = self._updateDb(rb)
 
@@ -325,9 +384,12 @@ class MysqlReporter(BenchmarkReport):
         """.format(year_id, rb.category)
         res = self._db.query(q)
         if not res:
-            rb.dumpToFile('Do not have given category')
-            satt_log('^^ dumped to file (unknown category)')
-            return True
+            if configs.configs['save-new-tasks'] == 'yes':
+                res = self.update_category(year_id, rb.category)
+            else:
+                rb.dumpToFile('Do not have given category')
+                satt_log('^^ dumped to file (unknown category)')
+                return True
 
         assert len(res) == 1
         cat_id = res[0][0]
@@ -340,9 +402,12 @@ class MysqlReporter(BenchmarkReport):
 
         # we do not have such a task??
         if not res:
-            rb.dumpToFile('Do not have given task')
-            satt_log('^^ dumped to file (unknown task)')
-            return True
+            if configs.configs['save-new-tasks'] == 'yes':
+                res = self.save_task(rb, cat_id)
+            else:
+                rb.dumpToFile('Do not have given task')
+                satt_log('^^ dumped to file (unknown task)')
+                return True
 
         assert len(res) == 1
         task_id = res[0][0]
