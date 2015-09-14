@@ -49,6 +49,7 @@ OPTS can be:
     --no-db                         Do not store result to database
     --year=[year]                   Specify year (git tag i. e. master, svcomp15, ...)
     --save-new-task                 Create new tasks if they are not in database
+    --ignore-duplicates             Ignore duplicate results for tasks
     --exclude=set1.set,set2.set,... Do not run these benchmark sets. Ignored when
                                     standalone .set file is given in --benchmarks
                                     (applies only on directories).
@@ -107,7 +108,7 @@ configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic',
            'year':'master', 'params':{'*':''}, 'exclude':'',
            'started_at' : time.strftime('%Y-%m-%d-%H-%S'), 'note':'',
-           'save-new-tasks' : 'no'}
+           'save-new-tasks' : 'no', 'ignore-duplicates' : 'no'}
 
 def params_from_string(pars, pard = None):
     " pars = params string, pard = params dictionary "
@@ -189,7 +190,7 @@ def parse_command_line():
                                   ['help', 'machines=', 'benchmarks=',
                                    'no-sync', 'no-db', 'sync=', 'debug',
                                    'year=', 'exclude=', 'params=', 'note=',
-                                   'save-new-tasks'])
+                                   'save-new-tasks', 'ignore-duplicates'])
     except getopt.GetoptError as e:
         err('{0}'.format(str(e)))
 
@@ -209,6 +210,8 @@ def parse_command_line():
             configs['no-db'] = 'yes'
         elif opt == '--save-new-tasks':
             configs['save-new-tasks'] = 'yes'
+        elif opt == '--ignore-duplicates':
+            configs['ignore-duplicates'] = 'yes'
         elif opt == '--debug':
             configs['debug'] = 'yes'
         elif opt == '--year':

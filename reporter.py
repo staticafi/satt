@@ -442,15 +442,19 @@ class MysqlReporter(BenchmarkReport):
             if (args[1].startswith('Duplicate entry')):
                 q, tool_id, task_id = data
 
-                err('Already has result of this benchmark for this tool.\n'
-                    'It is only supported to have one result for each '
-                    'benchmark and particular tool\n'
-                    '(tool + version + params). You can delete the old result:\n'
-                    '  $ ./db-cli \'DELETE from task_results WHERE tool_id={0}'
-                    ' and task_id={1}\'\n'
-                    'or you can delete all results for this tool:\n'
-                    '  $ ./db-cli \'DELETE from tools WHERE id={0}\'\n'
-                    .format(tool_id, task_id, tool_id))
+                if configs.configs['ignore-duplicates'] == 'yes':
+                    satt_log('Already has this result for this tool, ignoring.')
+                else:
+                    err('Already has result of this benchmark for this tool.\n'
+                        'It is only supported to have one result for each '
+                        'benchmark and particular tool\n'
+                        'If want ignore this behaviour use --ignore-duplicates.\n'
+                        '(tool + version + params). You can delete the old result:\n'
+                        '  $ ./db-cli \'DELETE from task_results WHERE tool_id={0}'
+                        ' and task_id={1}\'\n'
+                        'or you can delete all results for this tool:\n'
+                        '  $ ./db-cli \'DELETE from tools WHERE id={0}\'\n'
+                        .format(tool_id, task_id, tool_id))
             else:
                 err('Failed querying db: {0}\n\n{1}'.format(args[1], q))
 
