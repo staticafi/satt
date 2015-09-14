@@ -12,9 +12,9 @@ sync_slicer()
 
 	ssh "$MACHINE"\
 		"cd ${REMOTE_DIR};\
-		 if cd symbiotic &>/dev/null;\
+		 if cd slicer &>/dev/null;\
 			then git pull &>/dev/null;\
-			else git clone $GIT_REP; fi"
+			else git clone $GIT_REP slicer; fi"
 
 	return $?
 }
