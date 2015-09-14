@@ -8,8 +8,19 @@ remote-dir = ~
 # set of benchmarks
 year = master
 benchmarks = ~/benchmarks
-exclude = ECA.set, \
-	  Stateful.set, \
+# these are included in the other sets
+# FIXME add support for * syntax
+exclude = DeviceDrivers64.false-unreach-label.set, \
+	  BitVectors.false-unreach-label.set, \
+	  HeapManipulation.false-unreach-label.set, \
+	  Vectors.false-unreach-label.set, \
+	  DeviceDrivers64.false-unreach-label.set, \
+	  Loops.false-unreach-label.set, \
+	  Sequentialized.false-unreach-label.set, \
+	  ControlFlowInteger.false-unreach-label.set, \
+	  HeapManipulation.false-unreach-label.set, \
+	  ProductLines.false-unreach-label.set, \
+	  Simple.false-unreach-label.set, \
 	  DriverChallenges.set
 
 # list of machines
@@ -20,9 +31,11 @@ machines = stations.txt
 # '*' stands for every set
 # {benchmark-dirname} is special variable that expands to the directory containing
 # benchmark
-params = DeviceDrivers64: --64, \
-	 *		: --timeout=120 --debug \
-	 		  --prp={remote-dir}/{benchmark-dirname}/ALL.prp
+params = DeviceDrivers64			: --64, \
+	 Termination-crafted			: --64, \
+	 BusyBox				: --64, \
+	 *					: --timeout=120 --debug \
+	 					  --prp={remote-dir}/{benchmark-dirname}/ALL.prp
 
 # use variables, whoohoo!
 # variables can be any of defined above and two
