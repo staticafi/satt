@@ -345,7 +345,8 @@ class MysqlReporter(BenchmarkReport):
         if cr is None:
             cr = get_correct_result(rb.category)
         if cr is None:
-            err('Couldn\'t infer if the result is correct or not')
+            satt_log('Couldn\'t infer if the result is correct or not, setting unkown')
+            rb.result = 'unknown ({0})'.format(rb.result)
 
         # create new task
         q = """
