@@ -248,14 +248,16 @@ def get_name(name):
 def get_correct_result(name):
     """
     Returns 'true' or 'false' depending on what of these words
-    occurrs earlier in the name
+    occurrs earlier in the name. If none of these is contained
+    in the name, return None
     """
 
     ti = name.find('true')
     fi = name.find('false')
 
     # we must have either one or the other
-    assert ti != -1 or fi != -1
+    if ti == -1 and fi == -1:
+        return None
 
     if ti == -1:
         return 'false'
@@ -334,13 +336,23 @@ class MysqlReporter(BenchmarkReport):
     def save_task(self, rb, cat_id):
         """ Save unknown task into the database """
 
-        # create new task
         name = get_name(rb.name)
+
+        # get correct result - if it can not be derived from the
+        # benchmarks name, it we should be able to derive it from
+        # the category name
+        cr = get_correct_result(name)
+        if cr is None:
+            cr = get_correct_result(rb.category)
+        if cr is None:
+            err('Couldn\'t infer if the result is correct or not')
+
+        # create new task
         q = """
         INSERT INTO tasks
           (name, category_id, correct_result, property)
           VALUES('{0}', '{1}', '{2}', '{3}');
-        """.format(name, cat_id, get_correct_result(name), None)
+        """.format(name, cat_id, cr, None)
         self._db.query(q)
 
         q = """
@@ -422,8 +434,7 @@ class MysqlReporter(BenchmarkReport):
         (tool_id, task_id, result, is_correct, points, cpu_time,
          memory_usage, output, run_id)
         VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', {7}, '{8}')
-        """.format(tool_id, task_id, rb.result.lower(),
-                   is_correct(correct_result, rb.result),
+        """.format(tool_id, task_id, rb.result.lower(), ic,
                    self._rating_methods.points(ic, rb.result), None2Zero(rb.time),
                    None2Zero(rb.memory), Empty2Null(rb.output), self.run_id)
 
