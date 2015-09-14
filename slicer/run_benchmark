@@ -50,10 +50,15 @@ def run_slicer(slicer_location, benchmark, _debug = False):
     cmd.append('-o')
     cmd.append(b)
 
-    p = subprocess.Popen(cmd)
+    devnull = open(os.devnull, 'wb')
+    p = subprocess.Popen(cmd, stdout = devnull, stderr = devnull)
+
     p.wait()
+    devnull.close()
+
     if p.returncode != 0:
         print('ERROR')
+        print('compilation failed')
         sys.exit(1)
 
     cmd = ['{0}/bin/llvm-slicer'.format(slicer_location)]
