@@ -209,8 +209,7 @@ def assign_set(dirpath, path, tasks):
 
         n = 0
         for it in glob.iglob(line):
-            tasks[n % num].add(('benchmarks/{0}/{1}'.format(
-                                 configs.configs['year'], it), cat))
+            tasks[n % num].add(('benchmarks/c/{0}'.format(it), cat))
             n += 1
 
     f.close()
@@ -219,7 +218,7 @@ def assign_set(dirpath, path, tasks):
     return n != 0
 
 def assign_set_dir(dirpath, tasks):
-    dirpath = '{0}/{1}'.format(dirpath, configs.configs['year'])
+    dirpath = '{0}/c'.format(dirpath)
     edirpath = os.path.expanduser(dirpath)
     dbg('Looking for benchmarks in: {0}'.format(edirpath))
 
@@ -266,3 +265,19 @@ def get_benchmarks(files, tasks):
         num += t.getCount()
 
     return num
+
+def git_checkout(repo_dir, tag):
+    old_dir = os.getcwd()
+    epath = expand(repo_dir)
+    if os.path.isdir(epath):
+        dirpath = epath
+    else:
+        dirpath = os.path.dirname(epath)
+
+    os.chdir(dirpath)
+
+    ret = subprocess.call(['git', 'checkout', tag])
+
+    os.chdir(old_dir)
+
+    return ret == 0

@@ -36,7 +36,7 @@ from common import err, dbg, create_lockfile, colored, LOCKFILE
 from dispatcher import Dispatcher
 from sync import do_sync
 from configs import parse_configs, parse_command_line, usage, configs
-from tasks import get_machines, get_benchmarks
+from tasks import get_machines, get_benchmarks, git_checkout
 from log import satt_log, satt_log_init
 
 def remove_down_machines(tasks):
@@ -113,6 +113,10 @@ if __name__ == "__main__":
     if not remove_down_machines(tasks):
         err('No remote host is up, exiting...')
     do_sync(tasks)
+
+    # checkout benchmarks to the right revision
+    if not git_checkout(configs['benchmarks'], configs['year']):
+        err('Failed checkout benchmarks to the right revision')
 
     try:
         num = get_benchmarks(configs['benchmarks'], tasks)

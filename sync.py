@@ -77,7 +77,8 @@ class SyncDispatcher(Dispatcher):
             dbg('Synchronizing benchmarks on {0}'.format(t.getMachine()))
             ret = subprocess.call(['./sync-benchmarks.sh', m,
                                    configs['remote-dir'],
-                                   expand(configs['benchmarks'])])
+                                   expand(configs['benchmarks']),
+                                   configs['year']])
 
             # if syncing failed, remove the task from tasks
             if ret != 0:
