@@ -73,23 +73,6 @@ def start_log():
     satt_log_init(lf)
     satt_log('Starting satt on {0}'.format(tm))
 
-def try_infer_year(benchs):
-    from re import search
-
-    year = None
-    for s in benchs.split(','):
-        m = search('20[12]\d', s)
-        if m:
-            y = m.group(0)
-            if year and y != year:
-                satt_log('Warning: you may mix benchmarks from years {0} and {1}'.format(year, y))
-                year = None
-                break
-            else:
-                year = y
-
-    return year
-
 if __name__ == "__main__":
     # change working directory to the one with scripts
     working_dir = dirname(argv[0])
@@ -125,12 +108,6 @@ if __name__ == "__main__":
     if not configs.has_key('benchmarks'):
         usage()
         err('Need directory or files with benchmarks sets!')
-
-    if configs.has_key('benchmarks'):
-        y = try_infer_year(configs['benchmarks'])
-        if y:
-            configs['year'] = y
-            satt_log('Inferred year: {0}'.format(y))
 
     tasks = get_machines()
     if not remove_down_machines(tasks):

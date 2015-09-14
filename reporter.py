@@ -177,7 +177,7 @@ class RatingMethod(object):
                          'true_correct, true_incorrect '
                          'FROM rating_methods INNER JOIN years '
                          'ON rating_methods.year_id = years.id '
-                         'WHERE year = {0};'.format(configs.configs['year']))
+                         'WHERE year = \'{0}\';'.format(configs.configs['year']))
         if not res:
             err('Failed getting rating methods')
 

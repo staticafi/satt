@@ -47,7 +47,7 @@ OPTS can be:
     --sync=[yes/no]                 Whether to sync tool on remote machines
     --debug                         Enable debugging messages
     --no-db                         Do not store result to database
-    --year=[year]                   Specify year
+    --year=[year]                   Specify year (git tag i. e. master, svcomp15, ...)
     --exclude=set1.set,set2.set,... Do not run these benchmark sets. Ignored when
                                     standalone .set file is given in --benchmarks
                                     (applies only on directories).
@@ -73,8 +73,7 @@ remote-cmd    -- command to run the test on remote computer. This command
 timeout       -- timeout for tests
 sync-cmd      -- run this command before running tests to sync tool on remote
                  computers
-year          -- specify year of sv-comp. The benchmarks will be searched for in
-                 {benchmarks}/{year}
+year          -- specify year of sv-comp. The benchmarks will be checked out to this tag
 
 There are two special variables {benchmark} (synonym {file}) and {machine}
 that will expand to current benchmark file and remote machine.
@@ -105,7 +104,7 @@ Allowed keys in config file:
 configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'remote-cmd':'echo "ERROR: No command specified"',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic',
-           'year':time.strftime('%Y'), 'params':{'*':''}, 'exclude':'',
+           'year':'master', 'params':{'*':''}, 'exclude':'',
            'started_at' : time.strftime('%Y-%m-%d-%H-%S'), 'note':''}
 
 def params_from_string(pars, pard = None):
