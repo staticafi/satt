@@ -6,7 +6,7 @@ tool-dir = ~/symbiotic
 remote-dir = ~
 
 # set of benchmarks
-year = 2015
+year = master
 benchmarks = ~/benchmarks
 exclude = ECA.set, \
 	  Stateful.set, \
