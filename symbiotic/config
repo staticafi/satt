@@ -10,17 +10,14 @@ year = master
 benchmarks = ~/benchmarks
 # these are included in the other sets
 # FIXME add support for * syntax
-exclude = DeviceDrivers64.false-unreach-label.set, \
-	  BitVectors.false-unreach-label.set, \
-	  HeapManipulation.false-unreach-label.set, \
-	  Vectors.false-unreach-label.set, \
-	  DeviceDrivers64.false-unreach-label.set, \
-	  Loops.false-unreach-label.set, \
-	  Sequentialized.false-unreach-label.set, \
-	  ControlFlowInteger.false-unreach-label.set, \
-	  HeapManipulation.false-unreach-label.set, \
-	  ProductLines.false-unreach-label.set, \
-	  Simple.false-unreach-label.set, \
+exclude = DeviceDrivers64.false-unreach-label.set,\
+	  BitVectors.false-unreach-label.set,\
+	  HeapManipulation.false-unreach-label.set,\
+	  Loops.false-unreach-label.set,\
+	  Sequentialized.false-unreach-label.set,\
+	  ControlFlowInteger.false-unreach-label.set,\
+	  ProductLines.false-unreach-label.set,\
+	  Simple.false-unreach-label.set,\
 	  DriverChallenges.set
 
 # list of machines
