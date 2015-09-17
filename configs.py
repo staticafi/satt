@@ -56,6 +56,8 @@ OPTS can be:
     --params=[params]               overrides params entry in config file
     --note=[note]                   add note about this run of satt (will have effect
                                     only without --no-db)
+    --no-email                      do not send e-mail after completition (the e-mail
+                                    is sent only when running on all benchmarks)
 
 These options can be specified in config file (except for 'debug' and 'no-db')
 
@@ -108,7 +110,8 @@ configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic',
            'year':'master', 'params':{'*':''}, 'exclude':'',
            'started_at' : time.strftime('%Y-%m-%d-%H-%S'), 'note':'',
-           'save-new-tasks' : 'no', 'ignore-duplicates' : 'no'}
+           'save-new-tasks' : 'no', 'ignore-duplicates' : 'no',
+           'send-email' : 'yes'}
 
 def params_from_string(pars, pard = None):
     " pars = params string, pard = params dictionary "
@@ -190,7 +193,9 @@ def parse_command_line():
                                   ['help', 'machines=', 'benchmarks=',
                                    'no-sync', 'no-db', 'sync=', 'debug',
                                    'year=', 'exclude=', 'params=', 'note=',
-                                   'save-new-tasks', 'ignore-duplicates'])
+                                   'save-new-tasks', 'ignore-duplicates',
+                                   'no-email'])
+
     except getopt.GetoptError as e:
         err('{0}'.format(str(e)))
 
@@ -220,6 +225,8 @@ def parse_command_line():
             configs['exclude'] = arg
         elif opt == '--note':
             configs['note'] = arg
+        elif opt == '--no-email':
+            configs['send-email'] = 'no'
         elif opt == '--params':
             if configs.has_key('params'):
                 # if we have some params, just update

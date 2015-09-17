@@ -89,7 +89,7 @@ if __name__ == "__main__":
     # if user gave benchmarks to run on command line,
     # then he will probably wait for results, so do not
     # send an e-mail
-    if configs.has_key('benchmarks'):
+    if configs.has_key('benchmarks') or configs['send-email'] == 'no':
         send_email = False
     else:
         send_email = True
