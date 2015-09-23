@@ -30,7 +30,8 @@ import time
 
 allowed_keys = ['tool-dir', 'remote-dir', 'benchmarks', 'machines',
                 'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync', 'timeout',
-                'no-db', 'sync-cmd', 'year', 'params', 'exclude', 'note']
+                'no-db', 'sync-cmd', 'year', 'params', 'exclude', 'note',
+                'tool-tag']
 
 def usage():
     sys.stderr.write(
@@ -58,7 +59,7 @@ OPTS can be:
                                     only without --no-db)
     --no-email                      do not send e-mail after completition (the e-mail
                                     is sent only when running on all benchmarks)
-
+    --tool-tag=tag                  tag for the tool to filter it in database
 These options can be specified in config file (except for 'debug' and 'no-db')
 
 Each tool is supposed to have its own directory with config files and
@@ -194,7 +195,7 @@ def parse_command_line():
                                    'no-sync', 'no-db', 'sync=', 'debug',
                                    'year=', 'exclude=', 'params=', 'note=',
                                    'save-new-tasks', 'ignore-duplicates',
-                                   'no-email'])
+                                   'no-email', 'tool-tag='])
 
     except getopt.GetoptError as e:
         err('{0}'.format(str(e)))
@@ -225,6 +226,8 @@ def parse_command_line():
             configs['exclude'] = arg
         elif opt == '--note':
             configs['note'] = arg
+        elif opt == '--tool-tag':
+            configs['tool-tag'] = arg
         elif opt == '--no-email':
             configs['send-email'] = 'no'
         elif opt == '--params':

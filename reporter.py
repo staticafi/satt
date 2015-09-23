@@ -296,6 +296,12 @@ class MysqlReporter(BenchmarkReport):
         self._db.commit()
 
     def _updateDb(self, rb):
+        def choose_tag():
+            if configs.configs.has_key('tool-tag'):
+                return configs.configs['tool-tag']
+            else:
+                return configs.configs['tool']
+
         ver = rb.versions.strip()
 
         q = """
@@ -321,7 +327,7 @@ class MysqlReporter(BenchmarkReport):
             (name, year_id, version, params, tag, note)
             VALUES('{0}', '{1}', '{2}', '{3}', '{4}', {5});
             """.format(configs.configs['tool'], year_id,
-                       ver, self.tool_params, configs.configs['tool'],
+                       ver, self.tool_params, choose_tag(),
                        Empty2Null(configs.configs['note']))
             self._db.query(q2)
 
