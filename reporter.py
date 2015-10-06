@@ -65,6 +65,9 @@ class BenchmarkReport(object):
         elif s == '=== TIME CONSUMED':
             rb._state = 'TIME CONSUMED'
             return
+        elif s == '=== WITNESS':
+            rb._state = 'WITNESS'
+            return
 
         if rb._state is None:
             rb.output += '{0}\n'.format(s)
@@ -76,6 +79,8 @@ class BenchmarkReport(object):
             self.memoryUsage(rb, s);
         elif rb._state == 'TIME CONSUMED':
             self.timeConsumed(rb, s);
+        elif rb._state == 'WITNESS':
+            self.witness(rb, s);
 
     def done(self, rb):
         " The benchmark is done"
@@ -102,6 +107,9 @@ class BenchmarkReport(object):
 
     def versions(self, rb, msg):
             rb.versions += '{0}\n'.format(msg)
+
+    def witness(self, rb, msg):
+            rb.witness += '{0}\n'.format(msg)
 
     def memoryUsage(self, rb, msg):
         try:
@@ -152,11 +160,17 @@ class StdoutReporter(BenchmarkReport):
             else:
                 color = 'green'
 
+            if color == 'green' and rb.witness != '':
+                wtns = rb.witness.strip()
+                rb.result += ' ({0})'.format(wtns)
+
+                if wtns != 'confirmed':
+                    color = 'green_yellow_bg'
+
         prefix = '[{0} | {1}%]  '.format(strftime('%H:%M:%S'), self._progress)
         satt_log('{0} - {1}: {2}'.format(rb.category,
                                          os.path.basename(name),
                                          rb.result), color, prefix = prefix)
-
 
         if rb.result is None or rb.result == 'ERROR':
             satt_log('--- output <<{0}>>'.format(mach))
@@ -436,12 +450,16 @@ class MysqlReporter(BenchmarkReport):
         rb.output = rb.output.replace('\'', '\\\'')
         ic = is_correct(correct_result, rb.result)
 
+        resmsg= rb.result.lower()
+        if rb.witness != '':
+            resmsg += ' ({0})'.format(rb.witness.strip())
+
         q = """
         INSERT INTO task_results
         (tool_id, task_id, result, is_correct, points, cpu_time,
          memory_usage, output, run_id)
         VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', {7}, '{8}')
-        """.format(tool_id, task_id, rb.result.lower(), ic,
+        """.format(tool_id, task_id, resmsg, ic,
                    self._rating_methods.points(ic, rb.result), None2Zero(rb.time),
                    None2Zero(rb.memory), Empty2Null(rb.output), self.run_id)
 

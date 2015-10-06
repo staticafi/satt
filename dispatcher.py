@@ -55,6 +55,7 @@ class RunningTask(object):
         self.versions = ''
         self.memory = None
         self.time = None
+        self.witness = ''
 
         self._state = None # what are we just reading?
 
@@ -88,6 +89,7 @@ class RunningTask(object):
         f.write('params: {0}\n'.format(configs['params']))
         f.write('versions: {0}\n'.format(self.versions))
         f.write('result: {0}\n'.format(self.result))
+        f.write('witness: {0}\n\n'.format(self.witness))
         f.write('memUsage: {0}\n'.format(self.memory))
         f.write('cpuUsage: {0}s\n\n'.format(self.time))
         f.write('other output:\n{0}\n\n'.format(self.output))
