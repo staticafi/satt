@@ -31,8 +31,7 @@ machines = stations.txt
 params = DeviceDrivers64			: --64, \
 	 Termination-crafted			: --64, \
 	 BusyBox				: --64, \
-	 *					: --timeout=120 --debug \
-	 					  --prp={remote-dir}/{benchmark-dirname}/ALL.prp
+	 *					: --timeout=120 --debug
 
 # use variables, whoohoo!
 # variables can be any of defined above and two
