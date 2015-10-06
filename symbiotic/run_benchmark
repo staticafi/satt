@@ -55,7 +55,7 @@ def run_symbiotic(symbiotic_location, benchmark, _debug = False,
 
     cmd.append(benchmark)
 
-    p = subprocess.Popen(cmd)
+    p = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     return p
 
 def printTimeConsumed():
@@ -100,6 +100,27 @@ def printVersions(symbiotic_dir):
 
     print('=== VERSIONS')
     print(version)
+
+def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
+    cmd = ['{0}/verify_path.sh '
+           '{1}/{2}-klee-out {3} {4}'.format(symbiotic_dir, os.path.abspath(tmpdir),
+                                             os.path.basename(benchmark),
+                                             os.path.abspath(prpfile),
+                                             os.path.abspath(benchmark))]
+
+    p = subprocess.Popen(cmd, shell=True,
+                         stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+
+    print('=== WITNESS')
+    start_timeout(90)
+    try:
+        out, err = p.communicate();
+        print(out)
+    except Timeout:
+        print('timeout')
+    finally:
+        stop_timeout()
+        sys.stdout.flush()
 
 def parse_args():
     try:
@@ -161,6 +182,10 @@ def sigpipe_handler(signum, data):
     signal_childs(signal.SIGINT)
     signal_childs(signal.SIGKILL)
 
+def say_result(res):
+    print(res)
+    return res
+
 if __name__ == "__main__":
 
     pths, timeout, debug, slce, prp, arch, klee_params = parse_args()
@@ -177,6 +202,8 @@ if __name__ == "__main__":
     printVersions(symbiotic_dir)
 
     tmpdir, src = copy_source_to_tmp(benchmark)
+    if prp is None:
+        prp = '{0}/ALL.prp'.format(os.path.dirname(benchmark))
 
     signal.signal(signal.SIGPIPE, sigpipe_handler)
     start_timeout(timeout)
@@ -184,23 +211,29 @@ if __name__ == "__main__":
     print('=== RESULT')
     sys.stdout.flush()
 
+    result=None
     try:
         p = run_symbiotic(symbiotic_dir, src, debug, slce, prp, arch, klee_params)
         (out, err) = p.communicate()
         stop_timeout()
 
         if p.returncode != 0:
-            print('ERROR')
+            result=say_result('ERROR')
 
         # these should be None ...
         if not out is None:
-            print(out)
-        if not err is None:
-            print(err)
+            for line in out.split('\n'):
+                if line == 'FALSE':
+                    # we'll say the result anyway in else branch,
+                    # but we need to catch FALSE, so that we can check
+                    # the witness after
+                    result=say_result(line)
+                else:
+                    print(line)
 
         sys.stdout.flush()
     except Timeout:
-        print('TIMEOUT')
+        result=say_result('TIMEOUT')
         sys.stdout.flush()
     finally:
         stop_timeout()
@@ -208,22 +241,15 @@ if __name__ == "__main__":
         printTimeConsumed()
         printMemoryUsage()
 
-        # use sigint twice, klee sometimes needs it
-        signal_childs(signal.SIGINT)
-        signal_childs(signal.SIGINT)
+        if result == 'FALSE':
+            verify_error_path(tmpdir, src, prp, symbiotic_dir)
 
+        # use more signals, klee sometimes needs it
+        signal_childs(signal.SIGINT)
         signal_childs(signal.SIGTERM)
+        signal_childs(11)
 
-        # wait a while untill klee is killed if it is hanging
-        trials = 0
-        notdone = 1
-        while notdone != 0 and trials < 20:
-            trials += 1
-            print('waiting for childs termination ({0}) ...'.format(trials))
+        sleep(1)
+        rmrf_tmp_dir(tmpdir)
 
-            sleep(1)
-            notdone = rmrf_tmp_dir(tmpdir)
-
-        print('sending SIGKILL')
-        os.kill(0, signal.SIGKILL)
 
