@@ -140,6 +140,7 @@ class StdoutReporter(BenchmarkReport):
         name = rb.name
 
         color = None
+        result = rb.result
         t = rb.name.find('true')
         f = rb.name.find('false')
 
@@ -162,15 +163,15 @@ class StdoutReporter(BenchmarkReport):
 
             if color == 'green' and rb.witness != '':
                 wtns = rb.witness.strip()
-                rb.result += ' ({0})'.format(wtns)
+                result = '{0} ({1})'.format(rb.result, wtns)
 
                 if wtns != 'confirmed':
                     color = 'green_yellow_bg'
 
         prefix = '[{0} | {1}%]  '.format(strftime('%H:%M:%S'), self._progress)
         satt_log('{0} - {1}: {2}'.format(rb.category,
-                                         os.path.basename(name),
-                                         rb.result), color, prefix = prefix)
+                                         os.path.basename(name), result),
+                                         color, prefix = prefix)
 
         if rb.result is None or rb.result == 'ERROR':
             satt_log('--- output <<{0}>>'.format(mach))
@@ -450,16 +451,18 @@ class MysqlReporter(BenchmarkReport):
         rb.output = rb.output.replace('\'', '\\\'')
         ic = is_correct(correct_result, rb.result)
 
-        resmsg= rb.result.lower()
+        result= rb.result.lower()
         if rb.witness != '':
-            resmsg += ' ({0})'.format(rb.witness.strip())
+            wtns = rb.witness.strip()
+        else:
+            wtns = None
 
         q = """
         INSERT INTO task_results
-        (tool_id, task_id, result, is_correct, points, cpu_time,
+        (tool_id, task_id, result, witness, is_correct, points, cpu_time,
          memory_usage, output, run_id)
-        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', {7}, '{8}')
-        """.format(tool_id, task_id, resmsg, ic,
+        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', {8}, '{9}')
+        """.format(tool_id, task_id, result, wtns, ic,
                    self._rating_methods.points(ic, rb.result), None2Zero(rb.time),
                    None2Zero(rb.memory), Empty2Null(rb.output), self.run_id)
 
