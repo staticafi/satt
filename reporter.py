@@ -467,8 +467,9 @@ class MysqlReporter(BenchmarkReport):
                    None2Zero(rb.memory), Empty2Null(rb.output), self.run_id)
 
         def _exception_handler(args, data):
+            q, tool_id, task_id = data
+
             if (args[1].startswith('Duplicate entry')):
-                q, tool_id, task_id = data
 
                 if configs.configs['ignore-duplicates'] == 'yes':
                     satt_log('Already has this result for this tool, ignoring.')
