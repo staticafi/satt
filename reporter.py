@@ -457,6 +457,10 @@ class MysqlReporter(BenchmarkReport):
         result= rb.result.lower()
         if rb.witness != '':
             wtns = rb.witness.strip()
+
+            # replace ' even in witness, because it can contain
+            # arbitrary text
+            wtns = wtns.replace('\'', '\\\'')
         else:
             wtns = None
 
