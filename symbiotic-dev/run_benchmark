@@ -30,7 +30,7 @@ def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
                   slce = True, prp = None, arch = None, klee_params = None):
     cmd = ['{0}/symbiotic'.format(symbiotic_location)]
     if _debug:
-        cmd.append('--debug')
+        cmd.append('--debug=slicer')
     cmd.append('--sv-comp')
 
     if not prp is None:
@@ -51,11 +51,12 @@ def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
     return p
 
 def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
+    benchabs = os.path.abspath(benchmark)
     cmd = ['{0}/verify_path.sh '
-           '{1}/klee-last {2} {3}'.format(symbiotic_dir,
-                                          os.path.abspath(tmpdir),
-                                          os.path.abspath(prpfile),
-                                          os.path.abspath(benchmark))]
+           '{1}/{2}.graphml {3} {4}'.format(symbiotic_dir,
+                                            os.path.dirname(benchabs),
+                                            os.path.basename(benchmark),
+                                            os.path.abspath(prpfile), benchabs)]
 
     p = subprocess.Popen(cmd, shell=True,
                          stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
@@ -210,6 +211,7 @@ if __name__ == "__main__":
                     result = say_result(line)
                 else:
                     print(line)
+                sys.stdout.flush()
         else:
             result = say_result('ERROR')
 
