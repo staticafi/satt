@@ -204,7 +204,7 @@ class RatingMethod(object):
         self.true_correct = res[3]
         self.true_incorrect = res[4]
 
-    def points(self, ok, res):
+    def points(self, ok, res, witness = None):
        if res is None:
            return 0
 
@@ -214,7 +214,10 @@ class RatingMethod(object):
            return self.unknown
        elif res == 'false':
            if ok:
-               return self.false_correct
+                if witness == 'confirmed':
+                    return self.false_correct
+                else:
+                    return self.unknown
            else:
                return self.false_incorrect
        elif res == 'true':
@@ -463,7 +466,7 @@ class MysqlReporter(BenchmarkReport):
          memory_usage, output, run_id)
         VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', {8}, '{9}')
         """.format(tool_id, task_id, result, wtns, ic,
-                   self._rating_methods.points(ic, rb.result), None2Zero(rb.time),
+                   self._rating_methods.points(ic, rb.result, rb.witness), None2Zero(rb.time),
                    None2Zero(rb.memory), Empty2Null(rb.output), self.run_id)
 
         def _exception_handler(args, data):
