@@ -57,7 +57,13 @@ def colored(msg, c = None):
         return msg
 
 def err(msg):
-    sys.stderr.write(colored('ERR: {0}\n'.format(msg), 'red'))
+    emsg = 'ERR: {0}\n'.format(msg)
+    from log import satt_log_inited
+    if satt_log_inited():
+        from log import satt_log
+        satt_log(emsg, stdout = False)
+
+    sys.stderr.write(colored(emsg, 'red'))
     sys.exit(1)
 
 def dbg(msg):

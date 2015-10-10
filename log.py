@@ -42,6 +42,10 @@ def satt_log_init(lfile):
 
     atexit.register(lambda: log_file.close())
 
+def satt_log_inited():
+    global log_file
+    return not log_file is None
+
 def satt_log(msg, color = None, stdout = True, prefix = None):
     global log_file
     assert not log_file is None
