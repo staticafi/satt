@@ -83,8 +83,6 @@ if __name__ == "__main__":
         err('Another instance of satt is running. If this is not true,'
             ' remove {0}'.format(LOCKFILE))
 
-    start_log()
-
     tool = parse_command_line()
     # if user gave benchmarks to run on command line,
     # then he will probably wait for results, so do not
@@ -100,6 +98,9 @@ if __name__ == "__main__":
     # so rewrite the options from parse_configs()
     # XXX do it in some better way, this is a fast workaround
     parse_command_line()
+
+    # must be called here, when we know the name of the tool
+    start_log()
 
     # we need at least machines and dir now
     if not configs.has_key('machines'):
