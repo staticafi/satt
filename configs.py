@@ -60,6 +60,8 @@ OPTS can be:
     --no-email                      do not send e-mail after completition (the e-mail
                                     is sent only when running on all benchmarks)
     --tool-tag=tag                  tag for the tool to filter it in database
+    --skip-known-benchmarks=ID      skip benchmarks for which we already have result in
+                                    the db (for tool with id ID)
 These options can be specified in config file (except for 'debug' and 'no-db')
 
 Each tool is supposed to have its own directory with config files and
@@ -112,7 +114,7 @@ configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
            'year':'master', 'params':{'*':''}, 'exclude':'',
            'started_at' : time.strftime('%Y-%m-%d-%H-%S'), 'note':'',
            'save-new-tasks' : 'no', 'ignore-duplicates' : 'no',
-           'send-email' : 'yes'}
+           'send-email' : 'yes', 'skip-known-benchmarks' : 'no'}
 
 def params_from_string(pars, pard = None):
     " pars = params string, pard = params dictionary "
@@ -192,7 +194,7 @@ def parse_command_line():
                                    'no-sync', 'no-db', 'sync=', 'debug',
                                    'year=', 'exclude=', 'params=', 'note=',
                                    'save-new-tasks', 'ignore-duplicates',
-                                   'no-email', 'tool-tag='])
+                                   'no-email', 'tool-tag=', 'skip-known-benchmarks='])
 
     except getopt.GetoptError as e:
         err('{0}'.format(str(e)))
@@ -225,6 +227,11 @@ def parse_command_line():
             configs['note'] = arg
         elif opt == '--tool-tag':
             configs['tool-tag'] = arg
+        # this switch takes int argument just due
+        # to technicall constrains. The tool id we can infer after
+        # we got the result, but we don't want to run it at all
+        elif opt == '--skip-known-benchmarks':
+            configs['skip-known-benchmarks'] = arg
         elif opt == '--no-email':
             configs['send-email'] = 'no'
         elif opt == '--params':

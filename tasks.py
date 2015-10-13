@@ -175,15 +175,15 @@ def get_machines():
 
     return tasks
 
-def assign_set(dirpath, path, tasks):
-    old_dir = os.getcwd()
-    epath = expand(dirpath)
-    os.chdir(epath)
-
+def assign_set(dirpath, path, tasks, should_skip):
     # there is not so much of .set files, so there won't be
     # any significant time penalty if we parse the configs
     # here every time
     exclude = configs.configs['exclude'].split(',')
+
+    old_dir = os.getcwd()
+    epath = expand(dirpath)
+    os.chdir(epath)
 
     bname = os.path.basename(path)
     if bname in exclude:
@@ -209,15 +209,19 @@ def assign_set(dirpath, path, tasks):
 
         n = 0
         for it in glob.iglob(line):
-            tasks[n % num].add(('benchmarks/c/{0}'.format(it), cat))
-            n += 1
+            bench = ('benchmarks/c/{0}'.format(it), cat)
+            if should_skip(bench):
+                dbg('Skipping benchmark {0}'.format(it))
+            else:
+                tasks[n % num].add(bench)
+                n += 1
 
     f.close()
     os.chdir(old_dir)
 
     return n != 0
 
-def assign_set_dir(dirpath, tasks):
+def assign_set_dir(dirpath, tasks, should_skip):
     dirpath = '{0}/c'.format(dirpath)
     edirpath = os.path.expanduser(dirpath)
     dbg('Looking for benchmarks in: {0}'.format(edirpath))
@@ -236,13 +240,42 @@ def assign_set_dir(dirpath, tasks):
 
         # this path needs to be relative, since it can appear
         # on remote computer
-        gotany |= assign_set(dirpath, f, tasks)
+        gotany |= assign_set(dirpath, f, tasks, should_skip)
 
     if not gotany:
         sys.stderr.write('Warning: Haven\'t found any .set file\n')
 
+def _should_skip_with_db(dbproxy, toolid, year_id, x):
+    name, cat = x
+    catid = dbproxy.getCategoryID(year_id, cat)
+    if catid is None:
+        return False
+
+    taskid = dbproxy.getTaskID(catid, name)
+    if taskid is None:
+        return False
+
+    return dbproxy.hasTaskResult(taskid, toolid)
+
 def get_benchmarks(files, tasks):
     items = files.split(',')
+
+    skip_known_id = configs.configs['skip-known-benchmarks']
+    if skip_known_id != 0:
+        from database_proxy import DatabaseProxy
+        dbproxy = DatabaseProxy()
+        year_id = dbproxy.getYearID(configs.configs['year'])
+        if year_id is None:
+            err('Wrong year: {0}'.format(configs.configs['year']))
+
+        try:
+            toolid = int(skip_known_id)
+        except ValueError:
+            err('Invalid tool id for skip-known-benchmarks')
+
+        should_skip = lambda x: _should_skip_with_db(dbproxy, toolid, year_id, x)
+    else:
+        should_skip = lambda x: False
 
     for it in items:
         paths = glob.glob(expand(it))
@@ -253,11 +286,11 @@ def get_benchmarks(files, tasks):
         for path in paths:
             # get folder or .set file
             if os.path.isdir(path):
-                assign_set_dir(path, tasks)
+                assign_set_dir(path, tasks, should_skip)
             elif os.path.isfile(path):
                 dirpath = os.path.dirname(path)
                 basename = os.path.basename(path)
-                assign_set(dirpath, basename, tasks)
+                assign_set(dirpath, basename, tasks, should_skip)
 
     # return number of found benchmarks
     num = 0

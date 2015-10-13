@@ -21,7 +21,7 @@ exclude = DeviceDrivers64.false-unreach-label.set,\
 	  DriverChallenges.set
 
 # list of machines
-machines = stations.txt
+machines = machines.txt
 
 # these are comma separated parameters of the form:
 #    set1:params, set2:params

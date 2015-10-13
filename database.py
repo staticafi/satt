@@ -29,10 +29,11 @@
 import MySQLdb
 
 from common import err
+from os.path import abspath
 
 class DatabaseConnection(object):
-    def __init__(self):
-        self._conn, self._cursor = database_connect()
+    def __init__(self, conffile = None):
+        self._conn, self._cursor = database_connect(conffile)
 
     def __del__(self):
         self._conn.close()
@@ -59,8 +60,9 @@ class DatabaseConnection(object):
 
 
 def get_db_credentials(path = 'database/config'):
+    absp = abspath(path)
     try:
-        f = open(path, 'r')
+        f = open(absp, 'r')
     except IOError as e:
         err("Failed opening file with database configuration: {0}".format(e.strerror))
 
@@ -87,7 +89,7 @@ def get_db_credentials(path = 'database/config'):
         elif k == 'db':
             db = v
         else:
-            err('Unknown key in {0}: \'{1}\''.format(path, k))
+            err('Unknown key in {0}: \'{1}\''.format(absp, k))
 
     f.close()
 
@@ -103,8 +105,12 @@ def check_db_credentials(host, user, passwd, db):
     if db is None or db == '':
         err('Missing \'database\' for database')
 
-def database_connect():
-    host, user, passwd, db = get_db_credentials()
+def database_connect(conffile = None):
+    if conffile:
+        host, user, passwd, db = get_db_credentials(conffile)
+    else:
+        host, user, passwd, db = get_db_credentials()
+
     check_db_credentials(host, user, passwd, db)
 
     try:
