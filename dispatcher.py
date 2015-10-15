@@ -52,12 +52,25 @@ class RunningTask(object):
         # arbitrary auxiliary output
         self.result = None
         self.output = ''
+        self.outputlen = 0
         self.versions = ''
         self.memory = None
         self.time = None
         self.witness = ''
 
         self._state = None # what are we just reading?
+
+    def storeOutput(self, msg):
+        msglen = len(msg)
+        maxlen = 10000
+        if self.outputlen + msglen > maxlen:
+            copylen = self.outputlen + msglen - maxlen
+            self.output += msg[:copylen]
+        else:
+            copylen = msglen
+            self.output += msg
+
+        self.outputlen += copylen
 
     def readOutput(self):
         return self.proc.stdout.readline()

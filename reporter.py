@@ -70,7 +70,7 @@ class BenchmarkReport(object):
             return
 
         if rb._state is None:
-            rb.output += '{0}\n'.format(s)
+            rb.storeOutput('{0}\n'.format(s))
         elif rb._state == 'VERSIONS':
             self.versions(rb, s);
         elif rb._state == 'RESULT':
@@ -103,7 +103,7 @@ class BenchmarkReport(object):
         elif m == 'UNKNOWN':
             rb.result = 'UNKNOWN'
         else:
-            rb.output += 'RESULT: {0}\n'.format(msg)
+            rb.storeOutput('RESULT: {0}\n'.format(msg))
 
     def versions(self, rb, msg):
             rb.versions += '{0}\n'.format(msg)
@@ -118,7 +118,7 @@ class BenchmarkReport(object):
 
             rb.memory = float(msg)
         except ValueError:
-            rb.output += 'MEMORY USAGE: {0}\n'.format(msg)
+            rb.storeOutput('MEMORY USAGE: {0}\n'.format(msg))
 
     def timeConsumed(self, rb, msg):
         try:
@@ -127,7 +127,7 @@ class BenchmarkReport(object):
 
             rb.time = float(msg)
         except ValueError:
-            rb.output += 'TIME CONSUMED: {0}\n'.format(msg)
+            rb.storeOutput('TIME CONSUMED: {0}\n'.format(msg))
 
     def sendEmail(self, server, from_addr, to_addrs):
         pass
