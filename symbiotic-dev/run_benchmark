@@ -7,6 +7,7 @@ import atexit
 import resource
 import getopt
 import signal
+import datetime
 
 from time import sleep
 from tempfile import mkdtemp
@@ -182,8 +183,11 @@ def say_result(res):
     print(res)
     return res
 
-if __name__ == "__main__":
+def say_time(msg):
+    print('{0} at {1}'.format(msg, datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')))
 
+if __name__ == "__main__":
+    say_time('Starting')
     pths, timeout, debug, slce, old_slicer, prp, arch, klee_params = parse_args()
     if len(pths) == 2:
         symbiotic_dir = pths[0]
@@ -207,27 +211,41 @@ if __name__ == "__main__":
     p = run_symbiotic(symbiotic_dir, src, timeout, debug,
                       slce, old_slicer, prp, arch, klee_params)
     out, err = p.communicate()
+    say_time('Finished')
 
     result = None
     if p.returncode != 0:
         result = say_result('ERROR')
     else:
+        results = ['TRUE', 'UNKNOWN', 'ERROR', 'TIMEOUT']
         if not out is None:
+            lnum = 0
+            lmax = 100
             for line in iter(out.splitlines()):
                 if line == 'FALSE':
                     result = say_result(line)
+                elif line in results:
+                    result = say_result(line)
                 else:
-                    print(line)
+                    if lnum <= lmax:
+                        print(line)
+                        lnum += 1
+
                 sys.stdout.flush()
         else:
             result = say_result('ERROR')
 
     sys.stdout.flush()
 
+    say_time('Starting verifier')
     if result == 'FALSE':
         verify_error_path(tmpdir, src, prp, symbiotic_dir)
+    elif result is None:
+        print('Got no result')
+        say_result('ERROR')
 
     printTimeConsumed()
     printMemoryUsage()
+    say_time('Total end')
     rmrf_tmp_dir(tmpdir)
 
