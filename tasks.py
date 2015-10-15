@@ -261,7 +261,7 @@ def get_benchmarks(files, tasks):
     items = files.split(',')
 
     skip_known_id = configs.configs['skip-known-benchmarks']
-    if skip_known_id != 0:
+    if skip_known_id != 'no':
         from database_proxy import DatabaseProxy
         dbproxy = DatabaseProxy()
         year_id = dbproxy.getYearID(configs.configs['year'])
