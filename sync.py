@@ -36,14 +36,19 @@ from reporter import BenchmarkReport
 from log import satt_log
 
 class SyncReporter(BenchmarkReport):
+    def __init__(self, tasks):
+        self.task = tasks
+
     def done(self, rb):
         mach = rb.task.getMachine()
         name = rb.name
 
         rb.proc.poll()
         if rb.proc.returncode != 0:
-            msg = '{0} {1} - {2}: FAILED'.format(rb.category, mach, name)
-            err(msg)
+            msg = '{0} {1} - {2}: FAILED (removing)'.format(rb.category, mach, name)
+            satt_log(colored('{0}'.format(msg), 'red'))
+            self.tasks.remove(tb.task)
+
         else:
             msg = '{0} {1} - {2}: Done'.format(rb.category, mach, name)
             satt_log(msg)
@@ -58,9 +63,8 @@ class SyncReporter(BenchmarkReport):
         return True
 
 class SyncDispatcher(Dispatcher):
-
     def __init__(self, tasks):
-        Dispatcher.__init__(self, tasks, SyncReporter())
+        Dispatcher.__init__(self, tasks, SyncReporter(tasks))
 
         # create remote directory if it does not exists
         # this create remote-dir and remote-dir/satt
