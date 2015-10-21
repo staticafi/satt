@@ -2,11 +2,12 @@
 
 import sys
 import subprocess
-import signal
 import os
 import atexit
 import resource
 import getopt
+import signal
+import datetime
 
 from time import sleep
 from tempfile import mkdtemp
@@ -26,37 +27,59 @@ def stop_timeout():
     signal.signal(signal.SIGALRM, signal.SIG_DFL)
     signal.alarm(0)
 
-def set_environ(_debug = False, _slce = True, klee_params = None):
-    def env_prepend(env, what):
-        s = '{0}:{1}'.format(what, os.environ[env])
-        os.environ[env] = s
-
+#FIXME so many args, refactor!
+def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
+                  slce = True, old_slicer = False, require_slicer = False,
+                  prp = None, arch = None, klee_params = None):
+    cmd = ['{0}/symbiotic'.format(symbiotic_location)]
     if _debug:
-        os.environ['DEBUG'] = '1'
+        cmd.append('--debug=slicer')
+    cmd.append('--sv-comp')
 
-    if slce:
-        os.environ['SLICE'] = '1'
-    else:
-        os.environ['SLICE'] = '0'
-
-    if not klee_params is None:
-        os.environ['KLEE_PARAMS'] = klee_params
-
-def run_symbiotic(symbiotic_location, benchmark, _debug = False,
-                  slce = True, prp = None, arch = None, klee_params = None):
-    set_environ(_debug, slce, klee_params)
-
-    cmd = ['{0}/runme'.format(symbiotic_location)]
     if not prp is None:
-        cmd.append('-p')
-        cmd.append(os.path.expanduser(prp))
+       cmd.append('--prp={0}'.format(os.path.expanduser(prp)))
+
+    if not slce:
+        cmd.append('--no-slice')
+
     if arch == '64bit':
-        cmd.append('-6')
+        cmd.append('--64')
+
+    if timeout != 0:
+        cmd.append('--timeout={0}'.format(timeout))
+
+    if old_slicer:
+        cmd.append('--old-slicer')
+
+    if require_slicer:
+        cmd.append('--require-slicer')
 
     cmd.append(benchmark)
 
-    p = subprocess.Popen(cmd, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return p
+
+def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
+    benchabs = os.path.abspath(benchmark)
+    cmd = ['{0}/verify_path.sh '
+           '{1}/{2}.graphml {3} {4}'.format(symbiotic_dir,
+                                            os.path.dirname(benchabs),
+                                            os.path.basename(benchmark),
+                                            os.path.abspath(prpfile), benchabs)]
+
+    p = subprocess.Popen(cmd, shell=True,
+                         stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+
+    print('=== WITNESS')
+    start_timeout(90)
+    try:
+        out, err = p.communicate();
+        print(out)
+    except Timeout:
+        print('timeout')
+    finally:
+        stop_timeout()
+        sys.stdout.flush()
 
 def printTimeConsumed():
     us = resource.getrusage(resource.RUSAGE_CHILDREN)
@@ -78,8 +101,13 @@ def printMemoryUsage():
 
 def printVersions(symbiotic_dir):
     version = ''
-    f = open(os.path.join(symbiotic_dir, 'LLVM_SLICER_VERSION'), 'r')
-    version += 'slicer:{0}'.format(f.readline().strip())
+
+    f = open(os.path.join(symbiotic_dir, 'SYMBIOTIC_VERSION'), 'r')
+    version += 'symb:{0}'.format(f.readline().strip())
+    f.close()
+
+    f = open(os.path.join(symbiotic_dir, 'LLVM_NEW_SLICER_VERSION'), 'r')
+    version += '-slicer:{0}'.format(f.readline().strip())
     f.close()
 
     f = open(os.path.join(symbiotic_dir, 'SVC_SCRIPTS_VERSION'), 'r')
@@ -101,33 +129,12 @@ def printVersions(symbiotic_dir):
     print('=== VERSIONS')
     print(version)
 
-def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
-    cmd = ['{0}/verify_path.sh '
-           '{1}/{2}-klee-out {3} {4}'.format(symbiotic_dir, os.path.abspath(tmpdir),
-                                             os.path.basename(benchmark),
-                                             os.path.abspath(prpfile),
-                                             os.path.abspath(benchmark))]
-
-    p = subprocess.Popen(cmd, shell=True,
-                         stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-
-    print('=== WITNESS')
-    start_timeout(90)
-    try:
-        out, err = p.communicate();
-        print(out)
-    except Timeout:
-        print('timeout')
-    finally:
-        stop_timeout()
-        sys.stdout.flush()
-
 def parse_args():
     try:
         opts, args = getopt.getopt(sys.argv[1:], '', ['timeout=',
                                                       'debug', 'no-slice',
-                                                      '64', 'prp=',
-                                                      'klee-params='])
+                                                      '64', 'prp=', 'old-slicer',
+                                                      'require-slicer', 'klee-params='])
     except getopt.GetoptError as e:
         print('{0}'.format(str(e)))
         sys.exit(1)
@@ -135,6 +142,8 @@ def parse_args():
     debug = False
     timeout=0
     slce = True
+    old_slicer = False
+    req_slce = False
     arch = None
     prp = None
     klee_params = None
@@ -146,14 +155,20 @@ def parse_args():
             timeout = int(arg)
         elif opt == '--no-slice':
             slce = False
+        elif opt == '--require-slicer':
+            req_slce = False
         elif opt == '--64':
             arch = '64bit'
+        elif opt == '--old-slicer':
+            old_slicer = True
         elif opt == '--prp':
             prp = arg
         elif opt == '--klee-params':
+            print('NOT IMPLEMENTED')
+            sys.exit(1)
             klee_params = arg
 
-    return (args, timeout, debug, slce, prp, arch, klee_params)
+    return (args, timeout, debug, slce, old_slicer, req_slce, prp, arch, klee_params)
 
 def rmrf_tmp_dir(d):
     return os.system('rm -rf {0}'.format(d))
@@ -172,23 +187,16 @@ def copy_source_to_tmp(src):
 
     return (tmpdir, '{0}/{1}'.format(tmpdir, basename))
 
-def signal_childs(sig):
-    signal.signal(sig, signal.SIG_IGN)
-    os.kill(0, sig)
-    signal.signal(sig, signal.SIG_DFL)
-
-def sigpipe_handler(signum, data):
-    signal_childs(signal.SIGINT)
-    signal_childs(signal.SIGINT)
-    signal_childs(signal.SIGKILL)
-
 def say_result(res):
     print(res)
     return res
 
-if __name__ == "__main__":
+def say_time(msg):
+    print('{0} at {1}'.format(msg, datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')))
 
-    pths, timeout, debug, slce, prp, arch, klee_params = parse_args()
+if __name__ == "__main__":
+    say_time('Starting')
+    pths, timeout, debug, slce, old_slicer, require_slicer, prp, arch, klee_params = parse_args()
     if len(pths) == 2:
         symbiotic_dir = pths[0]
         benchmark = pths[1]
@@ -205,51 +213,47 @@ if __name__ == "__main__":
     if prp is None:
         prp = '{0}/ALL.prp'.format(os.path.dirname(benchmark))
 
-    signal.signal(signal.SIGPIPE, sigpipe_handler)
-    start_timeout(timeout)
-
     print('=== RESULT')
     sys.stdout.flush()
 
-    result=None
-    try:
-        p = run_symbiotic(symbiotic_dir, src, debug, slce, prp, arch, klee_params)
-        (out, err) = p.communicate()
-        stop_timeout()
+    p = run_symbiotic(symbiotic_dir, src, timeout, debug,
+                      slce, old_slicer, require_slicer, prp, arch, klee_params)
+    out, err = p.communicate()
+    say_time('Finished')
 
-        if p.returncode != 0:
-            result=say_result('ERROR')
-
-        # these should be None ...
+    result = None
+    if p.returncode != 0:
+        result = say_result('ERROR')
+    else:
+        results = ['TRUE', 'UNKNOWN', 'ERROR', 'TIMEOUT']
         if not out is None:
-            for line in out.split('\n'):
+            lnum = 0
+            lmax = 100
+            for line in iter(out.splitlines()):
                 if line == 'FALSE':
-                    # we'll say the result anyway in else branch,
-                    # but we need to catch FALSE, so that we can check
-                    # the witness after
-                    result=say_result(line)
+                    result = say_result(line)
+                elif line in results:
+                    result = say_result(line)
                 else:
-                    print(line)
+                    if lnum <= lmax:
+                        print(line)
+                        lnum += 1
 
-        sys.stdout.flush()
-    except Timeout:
-        result=say_result('TIMEOUT')
-        sys.stdout.flush()
-    finally:
-        stop_timeout()
+                sys.stdout.flush()
+        else:
+            result = say_result('ERROR')
 
-        printTimeConsumed()
-        printMemoryUsage()
+    sys.stdout.flush()
 
-        if result == 'FALSE':
-            verify_error_path(tmpdir, src, prp, symbiotic_dir)
+    say_time('Starting verifier')
+    if result == 'FALSE':
+        verify_error_path(tmpdir, src, prp, symbiotic_dir)
+    elif result is None:
+        print('Got no result')
+        say_result('ERROR')
 
-        # use more signals, klee sometimes needs it
-        signal_childs(signal.SIGINT)
-        signal_childs(signal.SIGTERM)
-        signal_childs(11)
-
-        sleep(1)
-        rmrf_tmp_dir(tmpdir)
-
+    printTimeConsumed()
+    printMemoryUsage()
+    say_time('Total end')
+    rmrf_tmp_dir(tmpdir)
 

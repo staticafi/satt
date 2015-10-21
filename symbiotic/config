@@ -2,12 +2,14 @@
 
 ssh-cmd = /usr/bin/ssh
 ssh-user = statica
-tool-dir = ~/symbiotic
+tool-dir = /var/research/satt/symbiotic
 remote-dir = ~
+
+tool-tag = symbiotic
 
 # set of benchmarks
 year = master
-benchmarks = ~/benchmarks
+benchmarks = /var/research/satt/benchmarks
 # these are included in the other sets
 # FIXME add support for * syntax
 exclude = DeviceDrivers64.false-unreach-label.set,\
@@ -21,7 +23,7 @@ exclude = DeviceDrivers64.false-unreach-label.set,\
 	  DriverChallenges.set
 
 # list of machines
-machines = machines.txt
+machines = stations.txt
 
 # these are comma separated parameters of the form:
 #    set1:params, set2:params
@@ -31,7 +33,7 @@ machines = machines.txt
 params = DeviceDrivers64			: --64, \
 	 Termination-crafted			: --64, \
 	 BusyBox				: --64, \
-	 *					: --timeout=120 --debug
+	 *					: --debug --timeout=120 --require-slicer
 
 # use variables, whoohoo!
 # variables can be any of defined above and two
