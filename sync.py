@@ -37,7 +37,7 @@ from log import satt_log
 
 class SyncReporter(BenchmarkReport):
     def __init__(self, tasks):
-        self.task = tasks
+        self.tasks = tasks
 
     def done(self, rb):
         mach = rb.task.getMachine()
@@ -47,7 +47,7 @@ class SyncReporter(BenchmarkReport):
         if rb.proc.returncode != 0:
             msg = '{0} {1} - {2}: FAILED (removing)'.format(rb.category, mach, name)
             satt_log(colored('{0}'.format(msg), 'red'))
-            self.tasks.remove(tb.task)
+            self.tasks.remove(rb.task)
 
         else:
             msg = '{0} {1} - {2}: Done'.format(rb.category, mach, name)
