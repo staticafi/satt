@@ -32,6 +32,8 @@ REMOTE_DIR="$2"
 SYMBIOTIC_DIR="$3"
 
 sendfile symbiotic/run_benchmark
+sendfile scripts/verify_path_cpa.sh
+sendfile scripts/verify_path_ultimate.sh
 
 sync_symbiotic "$MACHINE" "$REMOTE_DIR" "$SYMBIOTIC_DIR" || exit 1
 

@@ -8,6 +8,8 @@ import resource
 import getopt
 import signal
 import datetime
+import select
+import fcntl
 
 from time import sleep
 from tempfile import mkdtemp
@@ -59,9 +61,23 @@ def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return p
 
-def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
+def verify_error_path_cpa(tmpdir, benchmark, prpfile, symbiotic_dir):
     benchabs = os.path.abspath(benchmark)
-    cmd = ['{0}/verify_path.sh '
+    cmd = ['./verify_path_cpa.sh {0} '
+           '{1}/{2}.graphml {3} {4}'.format(symbiotic_dir,
+                                            os.path.dirname(benchabs),
+                                            os.path.basename(benchmark),
+                                            os.path.abspath(prpfile), benchabs)]
+
+    print(' '.join(cmd))
+    p = subprocess.Popen(cmd, shell=True,
+                         stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+
+    return p
+
+def verify_error_path_ultimate(tmpdir, benchmark, prpfile, symbiotic_dir):
+    benchabs = os.path.abspath(benchmark)
+    cmd = ['./verify_path_ultimate.sh {0} '
            '{1}/{2}.graphml {3} {4}'.format(symbiotic_dir,
                                             os.path.dirname(benchabs),
                                             os.path.basename(benchmark),
@@ -70,13 +86,76 @@ def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
     p = subprocess.Popen(cmd, shell=True,
                          stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 
+    return p
+
+
+def poll_add_fd(poll, fd):
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+    poll.register(fd, select.POLLIN | select.POLLERR | select.POLLHUP)
+
+def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
+    # run both checker paralelly
+    cpa = verify_error_path_cpa(tmpdir, benchmark, prpfile, symbiotic_dir)
+    ultimate = verify_error_path_ultimate(tmpdir, benchmark, prpfile, symbiotic_dir)
+    cpa_fd = cpa.stdout.fileno()
+    ultimate_fd = ultimate.stdout.fileno()
+
+    # poll for results
+    ## --
+    poll = select.poll()
+    poll_add_fd(poll, cpa_fd)
+    poll_add_fd(poll, ultimate_fd)
+
     print('=== WITNESS')
-    start_timeout(90)
+    start_timeout(3)
+    cpa_result = 'error'
+    ultimate_result = 'error'
+    got = 0
+    confirmed = False
     try:
-        out, err = p.communicate();
-        print(out)
+        while got < 2 and not confirmed:
+            for fd, flags in poll.poll():
+                if flags & select.POLLERR:
+                    if fd == cpa_fd:
+                        cpa_result = 'error'
+                    else:
+                        ultimate_result = 'error'
+
+                if flags & select.POLLIN:
+                    if fd == cpa_fd:
+                        cpa_result, err = cpa.communicate()
+                        got += 1
+                        cpa = None
+                        if cpa_result.startswith('confirmed'):
+                            confirmed = True
+                    else:
+                        ultimate_result, err = ultimate.communicate();
+                        got += 1
+                        ultimate = None
+                        if ultimate_result.startswith('confirmed'):
+                            confirmed = True
+
+                    # err should be None
+
+        stop_timeout()
+
+        if (confirmed):
+            print('confirmed')
+        elif cpa_result.startswith('unconfirmed') and ultimate_result.startswith('unconfirmed'):
+            print('unconfirmed')
+        else:
+            print('error')
+
+        print('=== WITNESS OUTPUT')
+        print(cpa_result)
+        print(ultimate_result)
     except Timeout:
         print('timeout')
+        if cpa:
+            cpa.kill()
+        if ultimate:
+            ultimate.kill()
     finally:
         stop_timeout()
         sys.stdout.flush()
