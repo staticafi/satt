@@ -35,6 +35,7 @@ import errno
 import glob
 import atexit
 import getopt
+import re
 
 from common import err, dbg, expand
 import configs
@@ -186,10 +187,11 @@ def assign_set(dirpath, path, tasks, should_skip):
     os.chdir(epath)
 
     bname = os.path.basename(path)
-    if bname in exclude:
-        dbg('Skiping {0} benchmarks'.format(bname))
-        os.chdir(old_dir)
-        return False
+    for e in exclude:
+        if re.search(e, bname):
+            dbg('Skiping {0} benchmarks'.format(bname))
+            os.chdir(old_dir)
+            return False
 
     try:
         f = open(path, 'r')
