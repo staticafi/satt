@@ -42,6 +42,28 @@ class BenchmarkReport(object):
     def __init__(self):
         self._progress = 0
 
+    def _changeState(self, rb, s):
+        if s == '=== VERSIONS':
+            rb._state = 'VERSIONS'
+            return True
+        elif s == '=== RESULT':
+            rb._state = 'RESULT'
+            return True
+        elif s == '=== MEMORY USAGE':
+            rb._state = 'MEMORY USAGE'
+            return True
+        elif s == '=== TIME CONSUMED':
+            rb._state = 'TIME CONSUMED'
+            return True
+        elif s == '=== WITNESS':
+            rb._state = 'WITNESS'
+            return True
+        elif s == '=== WITNESS OUTPUT':
+            rb._state = 'WITNESS OUTPUT'
+            return True
+
+        return False
+
     def report(self, msg, rb):
         """
         Report what happens for one benchmark.
@@ -53,20 +75,7 @@ class BenchmarkReport(object):
         name = rb.name
         s = msg.strip()
 
-        if s == '=== VERSIONS':
-            rb._state = 'VERSIONS'
-            return
-        elif s == '=== RESULT':
-            rb._state = 'RESULT'
-            return
-        elif s == '=== MEMORY USAGE':
-            rb._state = 'MEMORY USAGE'
-            return
-        elif s == '=== TIME CONSUMED':
-            rb._state = 'TIME CONSUMED'
-            return
-        elif s == '=== WITNESS':
-            rb._state = 'WITNESS'
+        if self._changeState(rb, s):
             return
 
         if rb._state is None:
@@ -81,6 +90,8 @@ class BenchmarkReport(object):
             self.timeConsumed(rb, s);
         elif rb._state == 'WITNESS':
             self.witness(rb, s);
+        elif rb._state == 'WITNESS OUTPUT':
+            self.witnessOutput(rb, s);
 
     def done(self, rb):
         " The benchmark is done"
@@ -110,6 +121,9 @@ class BenchmarkReport(object):
 
     def witness(self, rb, msg):
             rb.witness += '{0}\n'.format(msg)
+
+    def witnessOutput(self, rb, msg):
+            rb.witness_output += '{0}\n'.format(msg)
 
     def memoryUsage(self, rb, msg):
         try:
@@ -464,14 +478,20 @@ class MysqlReporter(BenchmarkReport):
         else:
             wtns = None
 
+        if rb.witness_output != '':
+            # FIXME we should limit the wintess_output size, otherwise we
+            # get get some performance issues
+            rb.witness_output = rb.witness_output.strip()
+            rb.witness_output = rb.witness_output.replace('\'', '\\\'')
+
         q = """
         INSERT INTO task_results
         (tool_id, task_id, result, witness, is_correct, points, cpu_time,
-         memory_usage, output, run_id)
-        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', {8}, '{9}')
+         memory_usage, output, witness_output, run_id)
+        VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', {8}, '{9}', '{10}')
         """.format(tool_id, task_id, result, wtns, ic,
                    self._rating_methods.points(ic, rb.result, wtns), None2Zero(rb.time),
-                   None2Zero(rb.memory), Empty2Null(rb.output), self.run_id)
+                   None2Zero(rb.memory), Empty2Null(rb.output), rb.witness_output, self.run_id)
 
         def _exception_handler(args, data):
             q, tool_id, task_id = data

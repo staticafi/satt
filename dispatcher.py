@@ -57,6 +57,7 @@ class RunningTask(object):
         self.memory = None
         self.time = None
         self.witness = ''
+        self.witness_output = ''
 
         self._state = None # what are we just reading?
 
