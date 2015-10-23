@@ -2,7 +2,7 @@ DIR="$1"
 GRAPHML="$2"
 PRPFILE="$3"
 BENCHMARK="$4"
-VERIFIER_RESULT="$GRAPHML.result"
+VERIFIER_RESULT="$GRAPHML.ultimate-result"
 
 BENCHMARKDIR=`dirname "$BENCHMARK"`
 
@@ -15,16 +15,15 @@ python3 UltimateWitnessChecker.py \
     "$PRPFILE" \
     "$BENCHMARK" \
     32bit simple \
-    "$GRAPHML" > "$VERIFIER_RESULT"
+    "$GRAPHML" 1> "$VERIFIER_RESULT"
 
 if [ $? -ne 0 ]; then
 	echo "error"
-elif grep -q 'Error path found and confirmed' "$VERIFIER_RESULT"; then
+elif grep -q 'FALSE' "$VERIFIER_RESULT"; then
 	echo "confirmed"
 else
 	echo "unconfirmed"
 fi
 
-echo "--- UltimateAutomizer output ---"
 cat "$VERIFIER_RESULT"
 rm "$VERIFIER_RESULT"

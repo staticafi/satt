@@ -2,7 +2,7 @@ DIR="$1"
 GRAPHML="$2"
 PRPFILE="$3"
 BENCHMARK="$4"
-VERIFIER_RESULT="$GRAPHML.result"
+VERIFIER_RESULT="$GRAPHML.cpa-result"
 
 BENCHMARKDIR=`dirname "$BENCHMARK"`
 
@@ -44,6 +44,5 @@ else
 	echo "unconfirmed"
 fi
 
-echo "--- CPAchecker output ---"
 cat "$VERIFIER_RESULT"
 rm "$VERIFIER_RESULT"
