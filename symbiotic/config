@@ -23,7 +23,7 @@ machines = stations.txt
 # '*' stands for every set
 # {benchmark-dirname} is special variable that expands to the directory containing
 # benchmark
-params = DeviceDrivers64			: --64, \
+params = DeviceDriversLinux64			: --64, \
 	 Termination-crafted			: --64, \
 	 BusyBox				: --64, \
 	 *					: --debug --timeout=120 --require-slicer
