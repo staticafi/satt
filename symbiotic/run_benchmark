@@ -36,7 +36,6 @@ def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
     cmd = ['{0}/symbiotic'.format(symbiotic_location)]
     if _debug:
         cmd.append('--debug=slicer')
-    cmd.append('--sv-comp')
 
     if not prp is None:
        cmd.append('--prp={0}'.format(os.path.expanduser(prp)))
@@ -56,6 +55,11 @@ def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
     if require_slicer:
         cmd.append('--require-slicer')
 
+    benchabs = os.path.abspath(benchmark)
+    witnessfile = '--witness={0}/{1}.graphml'.format(os.path.dirname(benchabs),
+                                                     os.path.basename(benchmark))
+
+    cmd.append(witnessfile)
     cmd.append(benchmark)
 
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -316,11 +320,11 @@ if __name__ == "__main__":
     p = run_symbiotic(symbiotic_dir, src, timeout, debug,
                       slce, old_slicer, require_slicer, prp, arch, klee_params)
     out, err = p.communicate()
-    say_time('Finished')
 
     result = None
     if p.returncode != 0:
         result = say_result('ERROR')
+        print(out)
     else:
         results = ['TRUE', 'UNKNOWN', 'ERROR', 'TIMEOUT']
         if not out is None:
