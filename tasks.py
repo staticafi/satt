@@ -188,8 +188,9 @@ def assign_set(dirpath, path, tasks, should_skip):
 
     bname = os.path.basename(path)
     for e in exclude:
+        e = e.strip()
         if re.search(e, bname):
-            dbg('Skiping {0} benchmarks'.format(bname))
+            print('Skiping {0} benchmarks'.format(bname))
             os.chdir(old_dir)
             return False
 
