@@ -1,0 +1,51 @@
+# configuration for arran.fi.muni.cz
+
+ssh-cmd = /usr/bin/ssh
+ssh-user = xlauko1
+#ssh-user = statica
+tool-dir = /var/research/satt/symdivine
+remote-dir = ~
+
+tool-tag = svcomp
+
+# set of benchmarks
+year = master
+benchmarks = /var/research/satt/benchmarks
+# these are included in the other sets
+# FIXME add support for * syntax
+exclude = DeviceDrivers64.false-unreach-label.set,\
+	  BitVectors.false-unreach-label.set,\
+	  HeapManipulation.false-unreach-label.set,\
+	  Loops.false-unreach-label.set,\
+	  Sequentialized.false-unreach-label.set,\
+	  ControlFlowInteger.false-unreach-label.set,\
+	  ProductLines.false-unreach-label.set,\
+	  Simple.false-unreach-label.set,\
+	  DriverChallenges.set
+
+# list of machines
+machines = machines-symdivine.txt
+#machines = st.txt
+
+# these are comma separated parameters of the form:
+#    set1:params, set2:params
+# '*' stands for every set
+# {benchmark-dirname} is special variable that expands to the directory containing
+# benchmark
+params = DeviceDrivers64			: --64, \
+	 Termination-crafted			: --64, \
+	 BusyBox				: --64, \
+	 *					: --timeout=900
+
+# use variables, whoohoo!
+# variables can be any of defined above and two
+# special: {machine} and {benchmark} (or synonym {file}) and {params}
+# I think meaning is pretty clear
+remote-cmd = {ssh-cmd} {ssh-user}@{machine} \
+	     '{remote-dir}/satt/symdivine/run_benchmark.py \
+	     						   {remote-dir}/symdivine \
+							   {remote-dir}/{benchmark} \
+							   {params}'
+
+# run symdivine-sync script
+sync-cmd = symdivine/symdivine-sync.sh {ssh-user}@{machine} '{remote-dir}' {tool-dir}
