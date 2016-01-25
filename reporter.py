@@ -551,10 +551,10 @@ Results:
            configs.configs['note'])
 
         q = """
-        SELECT result, is_correct, count(*)
+        SELECT result, is_correct, witness, count(*)
             FROM task_results
             WHERE run_id = {0}
-            GROUP BY result, is_correct""".format(self.run_id)
+            GROUP BY result, is_correct, witness""".format(self.run_id)
 
         res = self._db.query(q)
         if not res:
@@ -569,8 +569,12 @@ Results:
                 else:
                     result += ' correct'
 
-            text += '{0:<15} : {1}\n'.format(result, row[2])
-            total += row[2]
+            if not row[2] is None:
+                text += '{0:<15} (witness {1): {2}\n'.format(result, row[2], row[3])
+            else
+                text += '{0:<15}: {1}\n'.format(result, row[3])
+
+            total += row[3]
 
         text += '\nTotal number of benchmarks: {0}'.format(total)
 
@@ -583,7 +587,7 @@ Results:
         tool_id = res[0][0]
 
         text += '\n\nYou can check the results here:\n'
-        text += 'http://ben11.fi.muni.cz:3000/tools/{0}'.format(tool_id)
+        text += 'http://macdui.fi.muni.cz:3000/tools/{0}'.format(tool_id)
 
         text += '\n\nHave a nice day!\n'
 
