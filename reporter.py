@@ -571,7 +571,7 @@ Results:
 
             if not row[2] is None:
                 text += '{0:<15} (witness {1): {2}\n'.format(result, row[2], row[3])
-            else
+            else:
                 text += '{0:<15}: {1}\n'.format(result, row[3])
 
             total += row[3]
