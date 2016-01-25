@@ -22,6 +22,7 @@ import os
 import re
 import getopt
 import resource
+from tempfile import mkdtemp
 from subprocess import call, Popen, STDOUT, PIPE
 
 usage_msg = """
@@ -30,6 +31,7 @@ Usage: run_slicer [--64 | --timeout=t | --version | --old-slicer] symbiotic sour
     --timeout=t       Set timeout to t seconds
     --old-slicer      Run old slicer
     --no-optimize     Pass --no-optimize flag to symbiotic
+    --no-prepare      Pass --no-prepare flag to symbiotic
     --version         Return version
 """
 
@@ -38,7 +40,8 @@ VERSION='master.2'
 def parse_command_line():
     try:
         opts, args = getopt.getopt(sys.argv[1:], '',
-                                   ['64', 'timeout=', 'old-slicer', 'no-optimize'])
+                                   ['64', 'timeout=', 'old-slicer',
+                                    'no-optimize', 'no-prepare'])
     except getopt.GetoptError as e:
         sys.stderr.write('{0}'.format(str(e)))
         sys.exit(1)
@@ -47,18 +50,21 @@ def parse_command_line():
     timeout=0
     bit64 = False
     no_optimize = False
+    no_prepare = False
 
     for opt, arg in opts:
         if opt == '--old-slicer':
             old_slicer = True
         elif opt == '--no-optimize':
             no_optimize = True
+        elif opt == '--no-preapre':
+            no_prepare = True
         elif opt == '--64':
             bit64 = True
         elif opt == '--timeout':
             timeout = arg
 
-    return (bit64, old_slicer, no_optimize, timeout, args)
+    return (bit64, old_slicer, no_optimize, no_prepare, timeout, args)
 
 def printTimeConsumed():
     us = resource.getrusage(resource.RUSAGE_CHILDREN)
@@ -106,8 +112,25 @@ def printMemoryUsage():
 #
 #       print(line)
 
+def rmrf_tmp_dir(d):
+    return os.system('rm -rf {0}'.format(d))
+
+def copy_source_to_tmp(src):
+    # create temporary directory and copy sources there
+    tmpdir = mkdtemp(prefix='slicer.', dir='.')
+    basename = os.path.basename(src)
+
+    if os.system('cp {0} {1}/{2}'.format(src, tmpdir, basename)) != 0:
+        # cp already gave error message
+        rmrf_tmp_dir(tmpdir)
+        print('=== RESULT')
+        print('ERROR')
+        sys.exit(1)
+
+    return (tmpdir, basename)
+
 if __name__ == "__main__":
-    bit64, old_slicer, no_optimize, timeout, args = parse_command_line()
+    bit64, old_slicer, no_optimize, no_prepare, timeout, args = parse_command_line()
     if len(args) != 2:
         sys.stderr.write(usage_msg)
         sys.exit(1)
@@ -117,6 +140,9 @@ if __name__ == "__main__":
 
     print('=== VERSIONS')
     print(VERSION)
+
+    tmpdir, src = copy_source_to_tmp(source)
+    os.chdir(tmpdir)
 
     print('=== RESULT ')
 
@@ -131,8 +157,10 @@ if __name__ == "__main__":
 
     if no_optimize:
         cmd.append('--no-optimize')
+    #if no_prepare:
+    #cmd.append('--no-prepare')
 
-    cmd.append(source)
+    cmd.append(src)
 
     proc = Popen(cmd, stdout=PIPE, stderr=STDOUT)
     out, err = proc.communicate()
@@ -142,19 +170,31 @@ if __name__ == "__main__":
         print('ERROR')
         print(out)
         sys.exit(0)
-    else:
-        print('UNKNOWN')
 
-    result = 'ERROR'
+    if old_slicer:
+        # old slicer does not return 'Sliced away'
+        # it succeeds when it does not crash
+        result = 'UNKNOWN'
+    else:
+        result = 'ERROR'
+
+    # parse output (even with old slicer - it can return timeout)
     for line in iter(out.splitlines()):
         line = line.strip()
         if line == 'TIMEOUT':
             result = 'TIMEOUT'
         elif 'Sliced away' in line:
+            print(line)
+        elif 'saving sliced module' in line:
             result = 'UNKNOWN' # all ok
+        elif 'Did not find slicing criterion' in line:
+            result = 'UNKNOWN' # in this case it sliced too
             print(line)
 
     print result
+    # on error print whole output, so that we know what happend
+    if result == 'ERROR':
+        print(out)
 
     #print_statistics(symbiotic)
     printTimeConsumed()
@@ -162,5 +202,7 @@ if __name__ == "__main__":
 
     sys.stderr.flush()
     sys.stdout.flush()
+
+    rmrf_tmp_dir(tmpdir)
 
     sys.exit(0)

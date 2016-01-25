@@ -55,6 +55,10 @@ def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
     if require_slicer:
         cmd.append('--require-slicer')
 
+    # we run on sv-comp benchmarks where we assume that
+    # malloc never fails
+    cmd.append('--malloc-never-fails')
+
     benchabs = os.path.abspath(benchmark)
     witnessfile = '--witness={0}/{1}.graphml'.format(os.path.dirname(benchabs),
                                                      os.path.basename(benchmark))
@@ -286,7 +290,7 @@ def copy_source_to_tmp(src):
         print('ERROR')
         sys.exit(1)
 
-    return (tmpdir, '{0}/{1}'.format(tmpdir, basename))
+    return (tmpdir, '{0}'.format(basename))
 
 def say_result(res):
     print(res)
@@ -311,6 +315,8 @@ if __name__ == "__main__":
     printVersions(symbiotic_dir)
 
     tmpdir, src = copy_source_to_tmp(benchmark)
+    os.chdir(tmpdir)
+
     if prp is None:
         prp = '{0}/ALL.prp'.format(os.path.dirname(benchmark))
 

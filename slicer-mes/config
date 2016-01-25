@@ -12,7 +12,7 @@ year = master
 benchmarks = /var/research/satt/benchmarks
 # these are included in the other sets
 # FIXME add support for * syntax
-exclude = .*\.false-unreach-call.set
+exclude = .*\.false-unreach-call.set, Concurrency.set, Termination.set
 
 # list of machines
 machines = stations.txt
@@ -23,9 +23,9 @@ machines = stations.txt
 # {benchmark-dirname} is special variable that expands to the directory containing
 # benchmark
 params = DeviceDriversLinux64			: --64, \
-	 Termination-crafted			: --64, \
+	 Termination                            : --64, \
 	 BusyBox				: --64, \
-	 *					: --timeout=90 --no-optimize
+	 *					: --timeout=60
 
 # use variables, whoohoo!
 # variables can be any of defined above and two

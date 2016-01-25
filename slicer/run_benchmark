@@ -69,13 +69,17 @@ def run_slicer(slicer_location, benchmark, _debug = False):
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     return p
 
-def printTimeConsumed():
-    us = resource.getrusage(resource.RUSAGE_CHILDREN)
-    usr = getattr(us, 'ru_utime')
-    syst = getattr(us, 'ru_stime')
-
+def printTimeConsumed(to = 0):
     print('=== TIME CONSUMED')
-    print(usr + syst)
+    if to == 0:
+        us = resource.getrusage(resource.RUSAGE_CHILDREN)
+        usr = getattr(us, 'ru_utime')
+        syst = getattr(us, 'ru_stime')
+
+        print(usr + syst)
+    else:
+        print(to)
+
     sys.stdout.flush()
 
 
@@ -155,6 +159,7 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     start_timeout(timeout)
+    tm = 0
 
     try:
         p = run_slicer(slicer_dir, src, debug)
@@ -163,6 +168,8 @@ if __name__ == "__main__":
 
         if p.returncode != 0:
             print('ERROR')
+            print(err)
+            print(out)
 
         if not err is None:
             print(err)
@@ -179,11 +186,12 @@ if __name__ == "__main__":
         sys.stdout.flush()
     except Timeout:
         print('TIMEOUT')
+        tm=timeout
         sys.stdout.flush()
     finally:
         stop_timeout()
 
-        printTimeConsumed()
+        printTimeConsumed(tm)
         printMemoryUsage()
 
         notdone = rmrf_tmp_dir(tmpdir)

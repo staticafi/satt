@@ -113,7 +113,7 @@ def parse_args():
     if len(args) < 3 or args[1].startswith("-") or args[2].startswith("-"):
         print(__doc__)
         sys.exit(1)
-    opt = "-O1"
+    opt = "-O2"
     loc = args[1]
     benchmark = args[2]
     timeout = 120
@@ -165,8 +165,8 @@ if __name__ == "__main__":
 
     location, benchmark, opt_level, timeout, symdivine_params = parse_args()
 
-    print('=== VERSION')
-    print('O1 lart')
+    print('=== VERSIONS')
+    print('Spin2016 v2')
 
 
     tmpdir, src = copy_source_to_tmp(benchmark)
