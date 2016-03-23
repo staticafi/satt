@@ -13,7 +13,7 @@ benchmarks = /var/research/satt/benchmarks
 # these are included in the other sets
 # or we don't want to run them
 exclude = .*\.false-unreach-call.set, ECA.set,\
-	  DriverChallenges.set, Termination.set
+	  ECA-validate.set, DriverChallenges.set, Termination.set
 
 # list of machines
 machines = stations.txt
