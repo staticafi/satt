@@ -53,6 +53,7 @@ class RunningTask(object):
         self.result = None
         self.output = ''
         self.outputlen = 0
+        self.outputlines = 0
         self.versions = ''
         self.memory = None
         self.time = None
@@ -64,6 +65,12 @@ class RunningTask(object):
     def storeOutput(self, msg):
         msglen = len(msg)
         maxlen = 10000
+        maxlines = 1000
+
+        self.outputlines += 1
+        if self.outputlines >= maxlines:
+            return
+
         if self.outputlen + msglen > maxlen:
             copylen = self.outputlen + msglen - maxlen
             self.output += msg[:copylen]
