@@ -166,7 +166,7 @@ if __name__ == "__main__":
     location, benchmark, opt_level, timeout, symdivine_params = parse_args()
 
     print('=== VERSIONS')
-    print('Spin2016 v2')
+    print('Extract correction')
 
 
     tmpdir, src = copy_source_to_tmp(benchmark)

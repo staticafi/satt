@@ -32,7 +32,7 @@ def stop_timeout():
 #FIXME so many args, refactor!
 def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
                   slce = True, old_slicer = False, require_slicer = False,
-                  prp = None, arch = None, klee_params = None):
+                  prp = None, arch = None, klee_params = None, pta = None):
     cmd = ['{0}/symbiotic'.format(symbiotic_location)]
     if _debug:
         cmd.append('--debug=slicer')
@@ -58,6 +58,9 @@ def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
     # we run on sv-comp benchmarks where we assume that
     # malloc never fails
     cmd.append('--malloc-never-fails')
+    if not pta is None:
+        cmd.append('--pta')
+        cmd.append(pta)
 
     benchabs = os.path.abspath(benchmark)
     witnessfile = '--witness={0}/{1}.graphml'.format(os.path.dirname(benchabs),
@@ -125,7 +128,7 @@ def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
     poll_add_fd(poll, ultimate_fd)
 
     print('=== WITNESS')
-    start_timeout(90)
+    start_timeout(150)
     cpa_result = ''
     ultimate_result = ''
     got = 0
@@ -187,6 +190,7 @@ def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
         sys.stdout.flush()
 
 def printTimeConsumed():
+    sys.stdout.flush()
     us = resource.getrusage(resource.RUSAGE_CHILDREN)
     usr = getattr(us, 'ru_utime')
     syst = getattr(us, 'ru_stime')
@@ -197,6 +201,7 @@ def printTimeConsumed():
 
 
 def printMemoryUsage():
+    sys.stdout.flush()
     us = resource.getrusage(resource.RUSAGE_CHILDREN)
     maxrss = getattr(us, 'ru_maxrss')
 
@@ -233,13 +238,15 @@ def printVersions(symbiotic_dir):
 
     print('=== VERSIONS')
     print(version)
+    sys.stdout.flush()
 
 def parse_args():
     try:
         opts, args = getopt.getopt(sys.argv[1:], '', ['timeout=',
                                                       'debug', 'no-slice',
                                                       '64', 'prp=', 'old-slicer',
-                                                      'require-slicer', 'klee-params='])
+                                                      'require-slicer', 'klee-params=',
+                                                      'pta='])
     except getopt.GetoptError as e:
         print('{0}'.format(str(e)))
         sys.exit(1)
@@ -252,6 +259,7 @@ def parse_args():
     arch = None
     prp = None
     klee_params = None
+    pta = None
 
     for opt, arg in opts:
         if opt == '--debug':
@@ -268,12 +276,15 @@ def parse_args():
             old_slicer = True
         elif opt == '--prp':
             prp = arg
+        elif opt == '--pta':
+            pta = arg
         elif opt == '--klee-params':
             print('NOT IMPLEMENTED')
             sys.exit(1)
             klee_params = arg
 
-    return (args, timeout, debug, slce, old_slicer, req_slce, prp, arch, klee_params)
+    # FIXME refactor! Ugh, that's horrible
+    return (args, timeout, debug, slce, old_slicer, req_slce, prp, arch, klee_params, pta)
 
 def rmrf_tmp_dir(d):
     return os.system('rm -rf {0}'.format(d))
@@ -298,10 +309,11 @@ def say_result(res):
 
 def say_time(msg):
     print('{0} at {1}'.format(msg, datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')))
+    sys.stdout.flush()
 
 if __name__ == "__main__":
     say_time('Starting')
-    pths, timeout, debug, slce, old_slicer, require_slicer, prp, arch, klee_params = parse_args()
+    pths, timeout, debug, slce, old_slicer, require_slicer, prp, arch, klee_params, pta = parse_args()
     if len(pths) == 2:
         symbiotic_dir = pths[0]
         benchmark = pths[1]
@@ -324,7 +336,7 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     p = run_symbiotic(symbiotic_dir, src, timeout, debug,
-                      slce, old_slicer, require_slicer, prp, arch, klee_params)
+                      slce, old_slicer, require_slicer, prp, arch, klee_params, pta)
     out, err = p.communicate()
 
     result = None

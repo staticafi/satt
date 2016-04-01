@@ -24,14 +24,14 @@ sync_symbiotic()
 sendfile()
 {
 	FILE="$1"
+	rsync -r "$FILE" "$MACHINE":"$REMOTE_DIR"/satt/symbiotic-slicer/ || exit 1
 }
 
 MACHINE="$1"
 REMOTE_DIR="$2"
 SYMBIOTIC_DIR="$3"
 
-ssh "$MACHINE" mkdir -p "$REMOTE_DIR/satt/slicer-mes"
-scp slicer-mes/run_slicer "$MACHINE":"$REMOTE_DIR"/satt/slicer-mes/run_slicer || exit 1
+sendfile slicer-mes/run_benchmark
 sync_symbiotic "$MACHINE" "$REMOTE_DIR" "$SYMBIOTIC_DIR" || exit 1
 
 exit 0

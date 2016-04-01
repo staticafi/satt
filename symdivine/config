@@ -35,7 +35,7 @@ machines = machines-symdivine.txt
 params = DeviceDrivers64			: --64, \
 	 Termination-crafted			: --64, \
 	 BusyBox				: --64, \
-	 *					: --timeout=900
+	 *					: --timeout=420
 
 # use variables, whoohoo!
 # variables can be any of defined above and two
