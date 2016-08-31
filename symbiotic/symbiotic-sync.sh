@@ -16,7 +16,7 @@ sync_symbiotic()
 		"cd ${REMOTE_DIR};\
 		 if cd symbiotic &>/dev/null;\
 			then git pull &>/dev/null;\
-			else git clone $GIT_REP; fi"
+			else git clone --depth 1 $GIT_REP; fi"
 
 	return $?
 }

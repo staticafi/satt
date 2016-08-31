@@ -12,8 +12,14 @@ year = master
 benchmarks = /var/research/satt/benchmarks
 # these are included in the other sets
 # or we don't want to run them
-exclude = .*\.false-unreach-call.set, ECA.set,\
-	  ECA-validate.set, DriverChallenges.set, Termination.set
+exclude = .*\.false-unreach-call.set,\
+	  DriverChallenges.set, Termination*.set, \
+	  Concurrency*.set, ArraysMemSafety*.set, \
+	  BitVectorsOverflows*.set, \
+	  DriverChallenges.set, Termination-validate.set, \
+	  Concurrency-validate.set, ArraysMemSafety-validate.set, \
+	  BitVectorsOverflows-validate.set, \
+	  HeapMemSafety*.set, HeapMemSafety-validate.set
 
 # list of machines
 machines = stations.txt

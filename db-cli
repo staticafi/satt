@@ -60,6 +60,35 @@ def cmd_delete(db, cmd):
     else:
         return False
 
+def cmd_show_different(db, cmd):
+    try:
+        # the map can rise ValueError too
+        ids = map(int, cmd.split())
+        if len(ids) != 3:
+            raise ValueError
+    except ValueError:
+        print('Invalid id, syntax: tool1_id tool2_id category_id')
+        return False
+
+    cmd = """SELECT name, t1.result, t2.result
+             FROM task_results as t1
+                JOIN task_results as t2 ON t1.task_id = t2.task_id
+                JOIN tasks ON t1.task_id = tasks.id
+             WHERE t1.tool_id = {0} and t2.tool_id = {1}
+                AND tasks.category_id = {2} and t1.result != t2.result
+          """.format(ids[0], ids[1], ids[2])
+
+    res = db.query(cmd)
+    if not res:
+        print('Faile executing query:')
+        print(cmd)
+        return False
+
+    for r in res:
+        print('{0:5} <-> {1:5} | {2}'.format(r[1], r[2], r[0]))
+
+    return True
+
 def quote(s):
     if s[0] == '\'' and s[-1] == '\'':
         return s
@@ -75,7 +104,7 @@ def delete_tool(db, tool):
     if id:
         if not db.query('SELECT id FROM tools WHERE id = {0}'.format(id)):
             print('No such tool')
-            return True
+            return False
 
         db.query('DELETE FROM tools WHERE id = {0}'.format(id))
         db.commit()
@@ -169,6 +198,11 @@ if __name__ == "__main__":
             print_help()
         elif line.startswith('delete '):
             if not cmd_delete(db, line[7:]):
+                err = True
+            else:
+                print('OK')
+        elif line.startswith('showdiff '):
+            if not cmd_show_different(db, line[9:]):
                 err = True
             else:
                 print('OK')

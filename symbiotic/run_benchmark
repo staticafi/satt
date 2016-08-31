@@ -32,7 +32,8 @@ def stop_timeout():
 #FIXME so many args, refactor!
 def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
                   slce = True, old_slicer = False, require_slicer = False,
-                  prp = None, arch = None, klee_params = None, pta = None):
+                  prp = None, arch = None, klee_params = None, pta = None,
+                  repeat_sl = 1, optim=False):
     cmd = ['{0}/symbiotic'.format(symbiotic_location)]
     if _debug:
         cmd.append('--debug=slicer')
@@ -55,6 +56,12 @@ def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
     if require_slicer:
         cmd.append('--require-slicer')
 
+    #if repeat_sl > 1:
+    #    cmd.append('--repeat-slicing={0}'.format(repeat_sl))
+
+    if optim:
+        cmd.append('--optimize=before-O2,after')
+
     # we run on sv-comp benchmarks where we assume that
     # malloc never fails
     cmd.append('--malloc-never-fails')
@@ -69,6 +76,7 @@ def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
     cmd.append(witnessfile)
     cmd.append(benchmark)
 
+    print(cmd)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return p
 
@@ -246,7 +254,8 @@ def parse_args():
                                                       'debug', 'no-slice',
                                                       '64', 'prp=', 'old-slicer',
                                                       'require-slicer', 'klee-params=',
-                                                      'pta='])
+                                                      'pta=', 'repeat-slicing=',
+                                                      'optimize-O2'])
     except getopt.GetoptError as e:
         print('{0}'.format(str(e)))
         sys.exit(1)
@@ -260,6 +269,8 @@ def parse_args():
     prp = None
     klee_params = None
     pta = None
+    repeat_sl = 1
+    optim_O2 = False
 
     for opt, arg in opts:
         if opt == '--debug':
@@ -278,13 +289,18 @@ def parse_args():
             prp = arg
         elif opt == '--pta':
             pta = arg
+        elif opt == '--repeat-slicing':
+            repeat_sl = int(arg)
+        elif opt == '--optimize-O2':
+            optim_O2 = True
         elif opt == '--klee-params':
             print('NOT IMPLEMENTED')
             sys.exit(1)
             klee_params = arg
 
     # FIXME refactor! Ugh, that's horrible
-    return (args, timeout, debug, slce, old_slicer, req_slce, prp, arch, klee_params, pta)
+    return (args, timeout, debug, slce, old_slicer,
+            req_slce, prp, arch, klee_params, pta, repeat_sl, optim_O2)
 
 def rmrf_tmp_dir(d):
     return os.system('rm -rf {0}'.format(d))
@@ -313,7 +329,8 @@ def say_time(msg):
 
 if __name__ == "__main__":
     say_time('Starting')
-    pths, timeout, debug, slce, old_slicer, require_slicer, prp, arch, klee_params, pta = parse_args()
+    pths, timeout, debug, slce, old_slicer, require_slicer, prp, arch, klee_params, pta, repeat_sl , optim_O2 = parse_args()
+
     if len(pths) == 2:
         symbiotic_dir = pths[0]
         benchmark = pths[1]
@@ -335,8 +352,7 @@ if __name__ == "__main__":
     print('=== RESULT')
     sys.stdout.flush()
 
-    p = run_symbiotic(symbiotic_dir, src, timeout, debug,
-                      slce, old_slicer, require_slicer, prp, arch, klee_params, pta)
+    p = run_symbiotic(symbiotic_dir, src, timeout, debug, slce, old_slicer, require_slicer, prp, arch, klee_params, pta, repeat_sl, optim_O2)
     out, err = p.communicate()
 
     result = None
