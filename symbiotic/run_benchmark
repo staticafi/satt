@@ -327,6 +327,25 @@ def say_time(msg):
     print('{0} at {1}'.format(msg, datetime.datetime.strftime(datetime.datetime.now(), '%Y-%m-%d %H:%M:%S')))
     sys.stdout.flush()
 
+def get_prp(prp):
+    # if property is given in file, read the file
+    epath = os.path.expanduser(prp)
+    if os.path.isfile(epath):
+        prp_list = []
+        f = open(epath, 'r')
+        for line in f.readlines():
+            line = line.strip()
+            # ignore empty lines
+            if line:
+                prp_list.append(line)
+        f.close()
+        return prp_list
+
+    # it is not a file, so it is given as a string
+    # FIXME: this does not work for properties given
+    # as LTL (there are spaces)
+    return prp.split()
+
 if __name__ == "__main__":
     say_time('Starting')
     pths, timeout, debug, slce, old_slicer, require_slicer, prp, arch, klee_params, pta, repeat_sl , optim_O2 = parse_args()
@@ -380,9 +399,11 @@ if __name__ == "__main__":
 
     sys.stdout.flush()
 
-    say_time('Starting verifier')
-    if result == 'FALSE':
-        verify_error_path(tmpdir, src, prp, symbiotic_dir)
+    #say_time('Starting verifier')
+    if result == 'false':
+        is_reach = 'CHECK( init(main()), LTL(G ! call(__VERIFIER_error())) )' in get_prp(prp)
+        if is_reach:
+            verify_error_path(tmpdir, src, prp, symbiotic_dir)
     elif result is None:
         print('Got no result')
         say_result('ERROR')
