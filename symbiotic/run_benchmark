@@ -14,6 +14,17 @@ import fcntl
 from time import sleep
 from tempfile import mkdtemp
 
+debug = False
+timeout=0
+slce = True
+old_slicer = False
+require_slicer = False
+arch = None
+prp = None
+klee_params = None
+pta = None
+repeat_slicing = 1
+
 class Timeout(Exception):
     pass
 
@@ -29,14 +40,10 @@ def stop_timeout():
     signal.signal(signal.SIGALRM, signal.SIG_DFL)
     signal.alarm(0)
 
-#FIXME so many args, refactor!
-def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
-                  slce = True, old_slicer = False, require_slicer = False,
-                  prp = None, arch = None, klee_params = None, pta = None,
-                  repeat_sl = 1, optim=False):
+def run_symbiotic(symbiotic_location, benchmark):
     cmd = ['{0}/symbiotic'.format(symbiotic_location)]
-    if _debug:
-        cmd.append('--debug=slicer')
+    if debug:
+        cmd.append('--debug=all')
 
     if not prp is None:
        cmd.append('--prp={0}'.format(os.path.expanduser(prp)))
@@ -56,11 +63,11 @@ def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
     if require_slicer:
         cmd.append('--require-slicer')
 
-    #if repeat_sl > 1:
-    #    cmd.append('--repeat-slicing={0}'.format(repeat_sl))
+    #if repeat_slicing > 1:
+    #    cmd.append('--repeat-slicing={0}'.format(repeat_slicing))
 
-    if optim:
-        cmd.append('--optimize=before-O2,after')
+    #if optimize:
+    #    cmd.append('--optimize=before-O2,after')
 
     # we run on sv-comp benchmarks where we assume that
     # malloc never fails
@@ -76,32 +83,54 @@ def run_symbiotic(symbiotic_location, benchmark, timeout = 0, _debug = False,
     cmd.append(witnessfile)
     cmd.append(benchmark)
 
-    print(cmd)
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return p
 
 def verify_error_path_cpa(tmpdir, benchmark, prpfile, symbiotic_dir):
     benchabs = os.path.abspath(benchmark)
-    cmd = ['{0}/verify_path_cpa.sh {1} '
-           '{2}/{3}.graphml {4} {5}'.format(os.path.dirname(sys.argv[0]), symbiotic_dir,
-                                            os.path.dirname(benchabs),
-                                            os.path.basename(benchmark),
-                                            os.path.abspath(prpfile), benchabs)]
+    witness = '{0}.graphml'.format(benchabs)
+    cmd = ['scripts/cpa.sh', '-noout', '-heap 10000M', '-predicateAnalysis',
+           '-setprop', 'cfa.useMultiEdges=false',
+           '-setprop', 'cpa.predicate.solver=MATHSAT5',
+           '-setprop', 'cfa.simplifyCfa=false',
+           '-setprop', 'cfa.allowBranchSwapping=false',
+           '-setprop', 'cpa.predicate.ignoreIrrelevantVariables=false',
+           '-setprop', 'counterexample.export.assumptions.assumeLinearArithmetics=true',
+           '-setprop', 'coverage.enabled=false',
+           '-setprop', 'coverage.mode=TRANSFER',
+           '-setprop', 'coverage.export=true',
+           '-setprop', 'analysis.traversal.byAutomatonVariable=__DISTANCE_TO_VIOLATION',
+           '-setprop', 'cpa.automaton.treatErrorsAsTargets=false',
+           '-setprop', 'WitnessAutomaton.cpa.automaton.treatErrorsAsTargets=true',
+           '-setprop', 'parser.transformTokensToLines=false',
+           '-setprop', 'spec.matchOriginLine=true',
+           '-setprop', 'spec.matchOffset=true',
+           '-setprop', 'spec.matchAssumeCase=true',
+           '-setprop', 'spec.matchSourcecodeData=false',
+           '-setprop', 'spec.strictMatching=false',
+           '-setprop', 'cpa.composite.inCPAEnabledAnalysis=true',
+           '-setprop', 'cpa.predicate.handlePointerAliasing=false',
+           '-skipRecursion',
+           '-spec', witness, '-spec', os.path.abspath(prpfile)]
 
-    p = subprocess.Popen(cmd, shell=True,
+    p = subprocess.Popen(cmd, shell=False, cwd='{0}/CPAchecker'.format(symbiotic_dir),
                          stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 
     return p
 
 def verify_error_path_ultimate(tmpdir, benchmark, prpfile, symbiotic_dir):
     benchabs = os.path.abspath(benchmark)
-    cmd = ['{0}/verify_path_ultimate.sh {1} '
-           '{2}/{3}.graphml {4} {5}'.format(os.path.dirname(sys.argv[0]), symbiotic_dir,
-                                            os.path.dirname(benchabs),
-                                            os.path.basename(benchmark),
-                                            os.path.abspath(prpfile), benchabs)]
+    witness = '{0}.graphml'.format(benchabs)
 
-    p = subprocess.Popen(cmd, shell=True,
+    cmd = ['python3', 'UltimateWitnessChecker.py',
+            os.path.abspath(prpfile), benchabs]
+
+    if arch != '64bit':
+        cmd.append('32bit')
+
+    cmd += ['simple', os.path.abspath(witness)]
+
+    p = subprocess.Popen(cmd, shell=False, cwd='{0}/UltimateAutomizer'.format(symbiotic_dir),
                          stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 
     return p
@@ -121,6 +150,21 @@ def print_witness(benchmark):
 
 def poll_add_fd(poll, fd):
     poll.register(fd, select.POLLIN | select.POLLERR | select.POLLHUP)
+
+def cpa_confirmed(output):
+    for l in output.splitlines():
+        if l.strip() == 'Error path found and confirmed':
+            return True
+
+    return False
+
+
+def ultimate_confirmed(output):
+    for l in output.splitlines():
+        if l.strip() == 'FALSE':
+            return True
+
+    return False
 
 def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
     # run both checker paralelly
@@ -155,27 +199,24 @@ def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
                         cpa_result, err = cpa.communicate()
                         got += 1
                         cpa = None
-                        if cpa_result.startswith('confirmed'):
+                        if cpa_confirmed(cpa_result):
                             confirmed = True
                     else:
                         ultimate_result, err = ultimate.communicate();
                         got += 1
                         ultimate = None
-                        if ultimate_result.startswith('confirmed'):
+                        if ultimate_confirmed(ultimate_result):
                             confirmed = True
 
                     # err should be None
+                    assert err is None
 
         stop_timeout()
 
         if (confirmed):
             print('confirmed')
-        elif cpa_result.startswith('unconfirmed'):
-            print('unconfirmed')
-        elif ultimate_result.startswith('unconfirmed'):
-            print('unconfirmed')
         else:
-            print('error')
+            print('unconfirmed')
 
         print('=== WITNESS OUTPUT')
         print('--- CPAchecker output ---')
@@ -254,53 +295,46 @@ def parse_args():
                                                       'debug', 'no-slice',
                                                       '64', 'prp=', 'old-slicer',
                                                       'require-slicer', 'klee-params=',
-                                                      'pta=', 'repeat-slicing=',
-                                                      'optimize-O2'])
+                                                      'pta=', 'repeat-slicing='])
     except getopt.GetoptError as e:
         print('{0}'.format(str(e)))
         sys.exit(1)
 
-    debug = False
-    timeout=0
-    slce = True
-    old_slicer = False
-    req_slce = False
-    arch = None
-    prp = None
-    klee_params = None
-    pta = None
-    repeat_sl = 1
-    optim_O2 = False
-
     for opt, arg in opts:
         if opt == '--debug':
+            global debug
             debug = True
         elif opt == '--timeout':
+            global timeout
             timeout = int(arg)
         elif opt == '--no-slice':
+            global slce
             slce = False
         elif opt == '--require-slicer':
-            req_slce = False
+            global require_slicer
+            require_slicer = False
         elif opt == '--64':
+            global arch
             arch = '64bit'
         elif opt == '--old-slicer':
+            global old_slicer
             old_slicer = True
         elif opt == '--prp':
+            global prp
             prp = arg
         elif opt == '--pta':
+            global pta
             pta = arg
         elif opt == '--repeat-slicing':
-            repeat_sl = int(arg)
-        elif opt == '--optimize-O2':
-            optim_O2 = True
+            global repeat_slicing
+            repeat_slicing = int(arg)
         elif opt == '--klee-params':
             print('NOT IMPLEMENTED')
             sys.exit(1)
+            global klee_params
             klee_params = arg
 
-    # FIXME refactor! Ugh, that's horrible
-    return (args, timeout, debug, slce, old_slicer,
-            req_slce, prp, arch, klee_params, pta, repeat_sl, optim_O2)
+    return args
 
 def rmrf_tmp_dir(d):
     return os.system('rm -rf {0}'.format(d))
@@ -348,7 +382,7 @@ def get_prp(prp):
 
 if __name__ == "__main__":
     say_time('Starting')
-    pths, timeout, debug, slce, old_slicer, require_slicer, prp, arch, klee_params, pta, repeat_sl , optim_O2 = parse_args()
+    pths = parse_args()
 
     if len(pths) == 2:
         symbiotic_dir = pths[0]
@@ -371,7 +405,7 @@ if __name__ == "__main__":
     print('=== RESULT')
     sys.stdout.flush()
 
-    p = run_symbiotic(symbiotic_dir, src, timeout, debug, slce, old_slicer, require_slicer, prp, arch, klee_params, pta, repeat_sl, optim_O2)
+    p = run_symbiotic(symbiotic_dir, src)
     out, err = p.communicate()
 
     result = None
@@ -400,7 +434,7 @@ if __name__ == "__main__":
     sys.stdout.flush()
 
     #say_time('Starting verifier')
-    if result == 'false':
+    if result == 'FALSE':
         is_reach = 'CHECK( init(main()), LTL(G ! call(__VERIFIER_error())) )' in get_prp(prp)
         if is_reach:
             verify_error_path(tmpdir, src, prp, symbiotic_dir)
