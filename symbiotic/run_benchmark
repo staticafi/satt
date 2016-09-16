@@ -24,6 +24,7 @@ prp = None
 klee_params = None
 pta = None
 repeat_slicing = 1
+no_symexe = False
 
 class Timeout(Exception):
     pass
@@ -63,6 +64,9 @@ def run_symbiotic(symbiotic_location, benchmark):
     if require_slicer:
         cmd.append('--require-slicer')
 
+    if no_symexe:
+        cmd.append('--no-symexe')
+
     #if repeat_slicing > 1:
     #    cmd.append('--repeat-slicing={0}'.format(repeat_slicing))
 
@@ -89,7 +93,8 @@ def run_symbiotic(symbiotic_location, benchmark):
 def verify_error_path_cpa(tmpdir, benchmark, prpfile, symbiotic_dir):
     benchabs = os.path.abspath(benchmark)
     witness = '{0}.graphml'.format(benchabs)
-    cmd = ['scripts/cpa.sh', '-noout', '-heap 10000M', '-predicateAnalysis',
+    cmd = ['scripts/cpa.sh',
+           '-noout', '-heap', '10000M', '-predicateAnalysis',
            '-setprop', 'cfa.useMultiEdges=false',
            '-setprop', 'cpa.predicate.solver=MATHSAT5',
            '-setprop', 'cfa.simplifyCfa=false',
@@ -111,7 +116,10 @@ def verify_error_path_cpa(tmpdir, benchmark, prpfile, symbiotic_dir):
            '-setprop', 'cpa.composite.inCPAEnabledAnalysis=true',
            '-setprop', 'cpa.predicate.handlePointerAliasing=false',
            '-skipRecursion',
-           '-spec', witness, '-spec', os.path.abspath(prpfile)]
+           '-spec', witness, '-spec', os.path.abspath(prpfile), benchabs]
+
+    if arch == '64bit':
+        cmd.append('-64')
 
     p = subprocess.Popen(cmd, shell=False, cwd='{0}/CPAchecker'.format(symbiotic_dir),
                          stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
@@ -153,7 +161,7 @@ def poll_add_fd(poll, fd):
 
 def cpa_confirmed(output):
     for l in output.splitlines():
-        if l.strip() == 'Error path found and confirmed':
+        if 'Verification result: FALSE' in l:
             return True
 
     return False
@@ -295,7 +303,8 @@ def parse_args():
                                                       'debug', 'no-slice',
                                                       '64', 'prp=', 'old-slicer',
                                                       'require-slicer', 'klee-params=',
-                                                      'pta=', 'repeat-slicing='])
+                                                      'pta=', 'repeat-slicing=',
+                                                      'no-symexe'])
     except getopt.GetoptError as e:
         print('{0}'.format(str(e)))
         sys.exit(1)
@@ -319,6 +328,9 @@ def parse_args():
         elif opt == '--old-slicer':
             global old_slicer
             old_slicer = True
+        elif opt == '--no-symexe':
+            global no_symexe
+            no_symexe = True
         elif opt == '--prp':
             global prp
             prp = arg
@@ -335,23 +347,6 @@ def parse_args():
             klee_params = arg
 
     return args
-
-def rmrf_tmp_dir(d):
-    return os.system('rm -rf {0}'.format(d))
-
-def copy_source_to_tmp(src):
-    # create temporary directory and copy sources there
-    tmpdir = mkdtemp(prefix='symbiotic.', dir='.')
-    basename = os.path.basename(src)
-
-    if os.system('cp {0} {1}/{2}'.format(src, tmpdir, basename)) != 0:
-        # cp already gave error message
-        rmrf_tmp_dir(tmpdir)
-        print('=== RESULT')
-        print('ERROR')
-        sys.exit(1)
-
-    return (tmpdir, '{0}'.format(basename))
 
 def say_result(res):
     print(res)
@@ -396,8 +391,7 @@ if __name__ == "__main__":
 
     printVersions(symbiotic_dir)
 
-    tmpdir, src = copy_source_to_tmp(benchmark)
-    os.chdir(tmpdir)
+    src = os.path.abspath(benchmark)
 
     if prp is None:
         prp = '{0}/ALL.prp'.format(os.path.dirname(benchmark))
@@ -413,23 +407,34 @@ if __name__ == "__main__":
         result = say_result('ERROR')
         print(out)
     else:
-        results = ['TRUE', 'UNKNOWN', 'ERROR', 'TIMEOUT']
-        if not out is None:
-            lnum = 0
-            lmax = 100
-            for line in iter(out.splitlines()):
-                if line == 'FALSE':
-                    result = say_result(line)
-                elif line in results:
-                    result = say_result(line)
-                else:
-                    if lnum <= lmax:
-                        print(line)
-                        lnum += 1
-
-                sys.stdout.flush()
+        if no_symexe:
+            if out is None:
+                say_result('ERROR')
+            else:
+                for l in iter(out.splitlines()):
+                    if 'Did not find slicing criterion' in l:
+                        result = say_result('TRUE')
+                        break
+                if result is None:
+                    result = say_result('UNKNOWN')
         else:
-            result = say_result('ERROR')
+            results = ['TRUE', 'UNKNOWN', 'ERROR', 'TIMEOUT']
+            if not out is None:
+                lnum = 0
+                lmax = 100
+                for line in iter(out.splitlines()):
+                    if line == 'FALSE':
+                        result = say_result(line)
+                    elif line in results:
+                        result = say_result(line)
+                    else:
+                        if lnum <= lmax:
+                            print(line)
+                            lnum += 1
+
+                    sys.stdout.flush()
+            else:
+                result = say_result('ERROR')
 
     sys.stdout.flush()
 
@@ -445,5 +450,4 @@ if __name__ == "__main__":
     printTimeConsumed()
     printMemoryUsage()
     say_time('Total end')
-    rmrf_tmp_dir(tmpdir)
 

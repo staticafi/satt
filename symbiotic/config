@@ -26,7 +26,7 @@ machines = stations.txt
 params = DeviceDriversLinux64			: --64, \
 	 Termination				: --64, \
 	 BusyBox				: --64, \
-	 *					: --debug --timeout=120
+	 *					: --timeout=120
 
 # use variables, whoohoo!
 # variables can be any of defined above and two
