@@ -25,6 +25,7 @@ klee_params = None
 pta = None
 repeat_slicing = 1
 no_symexe = False
+optimize=None
 
 class Timeout(Exception):
     pass
@@ -67,15 +68,14 @@ def run_symbiotic(symbiotic_location, benchmark):
     if no_symexe:
         cmd.append('--no-symexe')
 
-    #if repeat_slicing > 1:
-    #    cmd.append('--repeat-slicing={0}'.format(repeat_slicing))
-
-    #if optimize:
-    #    cmd.append('--optimize=before-O2,after')
+    optimize='before-O3,after-O3'
+    if optimize:
+        cmd.append('--optimize={0}'.format(optimize))
 
     # we run on sv-comp benchmarks where we assume that
     # malloc never fails
     cmd.append('--malloc-never-fails')
+
     if not pta is None:
         cmd.append('--pta')
         cmd.append(pta)
@@ -90,7 +90,7 @@ def run_symbiotic(symbiotic_location, benchmark):
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return p
 
-def verify_error_path_cpa(tmpdir, benchmark, prpfile, symbiotic_dir):
+def verify_error_path_cpa(benchmark, prpfile, symbiotic_dir):
     benchabs = os.path.abspath(benchmark)
     witness = '{0}.graphml'.format(benchabs)
     cmd = ['scripts/cpa.sh',
@@ -126,7 +126,7 @@ def verify_error_path_cpa(tmpdir, benchmark, prpfile, symbiotic_dir):
 
     return p
 
-def verify_error_path_ultimate(tmpdir, benchmark, prpfile, symbiotic_dir):
+def verify_error_path_ultimate(benchmark, prpfile, symbiotic_dir):
     benchabs = os.path.abspath(benchmark)
     witness = '{0}.graphml'.format(benchabs)
 
@@ -174,10 +174,10 @@ def ultimate_confirmed(output):
 
     return False
 
-def verify_error_path(tmpdir, benchmark, prpfile, symbiotic_dir):
+def verify_error_path(benchmark, prpfile, symbiotic_dir):
     # run both checker paralelly
-    cpa = verify_error_path_cpa(tmpdir, benchmark, prpfile, symbiotic_dir)
-    ultimate = verify_error_path_ultimate(tmpdir, benchmark, prpfile, symbiotic_dir)
+    cpa = verify_error_path_cpa(benchmark, prpfile, symbiotic_dir)
+    ultimate = verify_error_path_ultimate(benchmark, prpfile, symbiotic_dir)
     cpa_fd = cpa.stdout.fileno()
     ultimate_fd = ultimate.stdout.fileno()
 
@@ -304,7 +304,7 @@ def parse_args():
                                                       '64', 'prp=', 'old-slicer',
                                                       'require-slicer', 'klee-params=',
                                                       'pta=', 'repeat-slicing=',
-                                                      'no-symexe'])
+                                                      'no-symexe', 'optimize='])
     except getopt.GetoptError as e:
         print('{0}'.format(str(e)))
         sys.exit(1)
@@ -337,6 +337,9 @@ def parse_args():
         elif opt == '--pta':
             global pta
             pta = arg
+        elif opt == '--optimize':
+            global optimize
+            optimize = arg
         elif opt == '--repeat-slicing':
             global repeat_slicing
             repeat_slicing = int(arg)
@@ -394,7 +397,7 @@ if __name__ == "__main__":
     src = os.path.abspath(benchmark)
 
     if prp is None:
-        prp = '{0}/ALL.prp'.format(os.path.dirname(benchmark))
+        prp = '{0}/ALL.prp'.format(os.path.dirname(src))
 
     print('=== RESULT')
     sys.stdout.flush()
@@ -415,6 +418,9 @@ if __name__ == "__main__":
                     if 'Did not find slicing criterion' in l:
                         result = say_result('TRUE')
                         break
+                    elif 'TIMEOUT' in l:
+                        result = say_result('TIMEOUT')
+
                 if result is None:
                     result = say_result('UNKNOWN')
         else:
@@ -442,9 +448,9 @@ if __name__ == "__main__":
     if result == 'FALSE':
         is_reach = 'CHECK( init(main()), LTL(G ! call(__VERIFIER_error())) )' in get_prp(prp)
         if is_reach:
-            verify_error_path(tmpdir, src, prp, symbiotic_dir)
+            verify_error_path(src, prp, symbiotic_dir)
     elif result is None:
-        print('Got no result')
+        print(out)
         say_result('ERROR')
 
     printTimeConsumed()
