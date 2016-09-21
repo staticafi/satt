@@ -218,17 +218,21 @@ class RatingMethod(object):
         self.true_correct = res[3]
         self.true_incorrect = res[4]
 
-    def points(self, ok, res, witness = None):
+    def points(self, ok, res, witness = None, categ=None):
        if res is None:
            return 0
 
+       print(categ)
+       no_wittness_categories = ['ArraysReach', 'ArraysMemSafety', 'Concurrency',
+                                 'Floats', 'HeapMemSafety', 'Termination']
        res = res.lower()
 
        if res == 'unknown' or res == 'error' or res == 'timeout':
            return self.unknown
        elif res == 'false':
            if ok:
-                if witness == 'confirmed':
+                if witness == 'confirmed' or\
+                   categ in no_wittness_categories:
                     return self.false_correct
                 else:
                     return self.unknown
@@ -429,7 +433,7 @@ class MysqlReporter(BenchmarkReport):
         tool_id, year_id = self._updateDb(rb)
 
         q = """
-        SELECT id FROM categories
+        SELECT id, name FROM categories
         WHERE
             year_id = '{0}' and name = '{1}';
         """.format(year_id, rb.category)
@@ -443,7 +447,9 @@ class MysqlReporter(BenchmarkReport):
                 return True
 
         assert len(res) == 1
+        assert len(res[0]) == 2
         cat_id = res[0][0]
+        cat_name = res[0][1]
 
         q = """
         SELECT id, correct_result FROM tasks
@@ -490,7 +496,7 @@ class MysqlReporter(BenchmarkReport):
          memory_usage, output, witness_output, run_id)
         VALUES('{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', {8}, '{9}', '{10}')
         """.format(tool_id, task_id, result, wtns, ic,
-                   self._rating_methods.points(ic, rb.result, wtns), None2Zero(rb.time),
+                   self._rating_methods.points(ic, rb.result, wtns, cat_name), None2Zero(rb.time),
                    None2Zero(rb.memory), Empty2Null(rb.output), rb.witness_output, self.run_id)
 
         def _exception_handler(args, data):
