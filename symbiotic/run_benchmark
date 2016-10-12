@@ -48,8 +48,8 @@ def run_symbiotic(symbiotic_location, benchmark, outputfile):
     if runexec:
         cmd = ['runexec', '--no-container']
         if timeout != 0:
-            cmd.append('--softtimelimit={0}'.format(timeout),
-                       '--timelimit={0}'.format(timeout + 3))
+            cmd += ['--softtimelimit={0}'.format(timeout),
+                    '--timelimit={0}'.format(timeout + 3)]
         cmd += ['--output={0}'.format(outputfile), '--']
     else:
         cmd = []
@@ -112,8 +112,8 @@ def verify_error_path_cpa(benchmark, outfile, prpfile, symbiotic_dir):
     if runexec:
         cmd = ['runexec', '--no-container']
         if timeout != 0:
-            cmd.append('--softtimelimit={0}'.format(90),
-                       '--timelimit={0}'.format(93))
+            cmd += ['--softtimelimit={0}'.format(90),
+                    '--timelimit={0}'.format(93)]
         cmd += ['--output={0}'.format(outfile), '--']
     else:
         cmd = []
@@ -164,8 +164,8 @@ def verify_error_path_ultimate(benchmark, outfile, prpfile, symbiotic_dir):
     if runexec:
         cmd = ['runexec', '--no-container']
         if timeout != 0:
-            cmd.append('--softtimelimit={0}'.format(90),
-                       '--timelimit={0}'.format(93))
+            cmd += ['--softtimelimit={0}'.format(90),
+                    '--timelimit={0}'.format(93)]
         cmd += ['--output={0}'.format(outfile), '--']
     else:
         cmd = []
@@ -275,9 +275,9 @@ def verify_error_path(benchmark, prpfile, symbiotic_dir):
         print('--- witness ---')
         print_witness(benchmark)
         print('--- CPAchecker output ---')
-        print_file(cpa_outputfile)
+        print_file(cpa_outputfile, 10, 50)
         print('--- UltimateAutomizer output ---')
-        print_file(ultimate_outputfile)
+        print_file(ultimate_outputfile, 10, 50)
     except Timeout:
         print('timeout')
     finally:
