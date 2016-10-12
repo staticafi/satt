@@ -13,6 +13,7 @@ import fcntl
 
 from time import sleep
 from tempfile import mkdtemp
+from collections import deque
 
 debug = False
 timeout=0
@@ -26,6 +27,7 @@ pta = None
 repeat_slicing = 1
 no_symexe = False
 optimize=None
+runexec=True
 
 class Timeout(Exception):
     pass
@@ -42,8 +44,17 @@ def stop_timeout():
     signal.signal(signal.SIGALRM, signal.SIG_DFL)
     signal.alarm(0)
 
-def run_symbiotic(symbiotic_location, benchmark):
-    cmd = ['{0}/symbiotic'.format(symbiotic_location)]
+def run_symbiotic(symbiotic_location, benchmark, outputfile):
+    if runexec:
+        cmd = ['runexec', '--no-container']
+        if timeout != 0:
+            cmd.append('--softtimelimit={0}'.format(timeout),
+                       '--timelimit={0}'.format(timeout + 3))
+        cmd += ['--output={0}'.format(outputfile), '--']
+    else:
+        cmd = []
+
+    cmd += ['{0}/symbiotic'.format(symbiotic_location)]
     if debug:
         cmd.append('--debug=all')
 
@@ -87,50 +98,79 @@ def run_symbiotic(symbiotic_location, benchmark):
     cmd.append(witnessfile)
     cmd.append(benchmark)
 
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if not runexec:
+        outfl = open(outputfile, 'w')
+    else:
+        outfl = subprocess.PIPE
+
+    p = subprocess.Popen(cmd, stdout=outfl, stderr=subprocess.STDOUT)
     return p
 
-def verify_error_path_cpa(benchmark, prpfile, symbiotic_dir):
+def verify_error_path_cpa(benchmark, outfile, prpfile, symbiotic_dir):
     benchabs = os.path.abspath(benchmark)
     witness = '{0}.graphml'.format(benchabs)
-    cmd = ['scripts/cpa.sh',
-           '-noout', '-heap', '10000M', '-predicateAnalysis',
-           '-setprop', 'cfa.useMultiEdges=false',
-           '-setprop', 'cpa.predicate.solver=MATHSAT5',
-           '-setprop', 'cfa.simplifyCfa=false',
-           '-setprop', 'cfa.allowBranchSwapping=false',
-           '-setprop', 'cpa.predicate.ignoreIrrelevantVariables=false',
-           '-setprop', 'counterexample.export.assumptions.assumeLinearArithmetics=true',
-           '-setprop', 'coverage.enabled=false',
-           '-setprop', 'coverage.mode=TRANSFER',
-           '-setprop', 'coverage.export=true',
-           '-setprop', 'analysis.traversal.byAutomatonVariable=__DISTANCE_TO_VIOLATION',
-           '-setprop', 'cpa.automaton.treatErrorsAsTargets=false',
-           '-setprop', 'WitnessAutomaton.cpa.automaton.treatErrorsAsTargets=true',
-           '-setprop', 'parser.transformTokensToLines=false',
-           '-setprop', 'spec.matchOriginLine=true',
-           '-setprop', 'spec.matchOffset=true',
-           '-setprop', 'spec.matchAssumeCase=true',
-           '-setprop', 'spec.matchSourcecodeData=false',
-           '-setprop', 'spec.strictMatching=false',
-           '-setprop', 'cpa.composite.inCPAEnabledAnalysis=true',
-           '-setprop', 'cpa.predicate.handlePointerAliasing=false',
-           '-skipRecursion',
-           '-spec', witness, '-spec', os.path.abspath(prpfile), benchabs]
+    if runexec:
+        cmd = ['runexec', '--no-container']
+        if timeout != 0:
+            cmd.append('--softtimelimit={0}'.format(90),
+                       '--timelimit={0}'.format(93))
+        cmd += ['--output={0}'.format(outfile), '--']
+    else:
+        cmd = []
+    cmd += ['scripts/cpa.sh',
+            '-noout', '-heap', '10000M', '-predicateAnalysis',
+            '-setprop', 'cfa.useMultiEdges=false',
+            '-setprop', 'cpa.predicate.solver=MATHSAT5',
+            '-setprop', 'cfa.simplifyCfa=false',
+            '-setprop', 'cfa.allowBranchSwapping=false',
+            '-setprop', 'cpa.predicate.ignoreIrrelevantVariables=false',
+            '-setprop', 'counterexample.export.assumptions.assumeLinearArithmetics=true',
+            '-setprop', 'coverage.enabled=false',
+            '-setprop', 'coverage.mode=TRANSFER',
+            '-setprop', 'coverage.export=true',
+            '-setprop', 'analysis.traversal.byAutomatonVariable=__DISTANCE_TO_VIOLATION',
+            '-setprop', 'cpa.automaton.treatErrorsAsTargets=false',
+            '-setprop', 'WitnessAutomaton.cpa.automaton.treatErrorsAsTargets=true',
+            '-setprop', 'parser.transformTokensToLines=false',
+            '-setprop', 'spec.matchOriginLine=true',
+            '-setprop', 'spec.matchOffset=true',
+            '-setprop', 'spec.matchAssumeCase=true',
+            '-setprop', 'spec.matchSourcecodeData=false',
+            '-setprop', 'spec.strictMatching=false',
+            '-setprop', 'cpa.composite.inCPAEnabledAnalysis=true',
+            '-setprop', 'cpa.predicate.handlePointerAliasing=false',
+            '-skipRecursion']
 
     if arch == '64bit':
         cmd.append('-64')
 
+    if timeout > 0:
+        cmd += ['-timelimit', '{0}'.format(timeout)]
+
+    cmd += ['-spec', witness, '-spec', os.path.abspath(prpfile), benchabs]
+
+    if not runexec:
+        outf = open(outfile, 'w')
+    else:
+        outf = subprocess.PIPE
     p = subprocess.Popen(cmd, shell=False, cwd='{0}/CPAchecker'.format(symbiotic_dir),
-                         stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+                         stderr=subprocess.STDOUT, stdout=outf)
 
     return p
 
-def verify_error_path_ultimate(benchmark, prpfile, symbiotic_dir):
+def verify_error_path_ultimate(benchmark, outfile, prpfile, symbiotic_dir):
     benchabs = os.path.abspath(benchmark)
     witness = '{0}.graphml'.format(benchabs)
+    if runexec:
+        cmd = ['runexec', '--no-container']
+        if timeout != 0:
+            cmd.append('--softtimelimit={0}'.format(90),
+                       '--timelimit={0}'.format(93))
+        cmd += ['--output={0}'.format(outfile), '--']
+    else:
+        cmd = []
 
-    cmd = ['python3', 'UltimateWitnessChecker.py',
+    cmd += ['python3', 'UltimateWitnessChecker.py',
             os.path.abspath(prpfile), benchabs]
 
     if arch != '64bit':
@@ -138,86 +178,91 @@ def verify_error_path_ultimate(benchmark, prpfile, symbiotic_dir):
 
     cmd += ['simple', os.path.abspath(witness)]
 
+    if not runexec:
+        outf = open(outfile, 'w')
+    else:
+        outf = subprocess.PIPE
     p = subprocess.Popen(cmd, shell=False, cwd='{0}/UltimateAutomizer'.format(symbiotic_dir),
-                         stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+                         stderr=subprocess.STDOUT, stdout=outf)
 
     return p
 
+def print_file(filename, first = 100, last = 100):
+    'Return the first few lines and last few lines of a file'
+
+    with open(filename) as f:
+        counter = 0
+        tail = deque(maxlen=last)
+        for line in iter(f.readlines()):
+            if counter < first:
+                sys.stdout.write(line)
+            else:
+                tail.append(line)
+            counter += 1
+
+        cnt = counter - first - last
+        if cnt >= 0:
+            if cnt > 0:
+                print(' ... {0} lines ...'.format(cnt))
+            for line in tail:
+                sys.stdout.write(line)
+
 def print_witness(benchmark):
     benchabs = os.path.abspath(benchmark)
-    path = '{0}/{1}.graphml'.format(os.path.dirname(benchabs),
-                                    os.path.basename(benchmark))
+    pth = '{0}/{1}.graphml'.format(os.path.dirname(benchabs),
+                                   os.path.basename(benchmark))
 
-    f = open(path, 'r')
-    line = f.readline()
-    while line:
-        print(line.strip())
-        line = f.readline()
+    print_file(pth)
 
-    f.close()
-
-def poll_add_fd(poll, fd):
-    poll.register(fd, select.POLLIN | select.POLLERR | select.POLLHUP)
+#def poll_add_fd(poll, fd):
+#    poll.register(fd, select.POLLIN | select.POLLERR | select.POLLHUP)
 
 def cpa_confirmed(output):
-    for l in output.splitlines():
-        if 'Verification result: FALSE' in l:
-            return True
+    with open(output) as f:
+        for l in iter(f.readlines()):
+            if 'Verification result: FALSE' in l:
+                return True
 
     return False
 
 
 def ultimate_confirmed(output):
-    for l in output.splitlines():
-        if l.strip() == 'FALSE':
-            return True
+    with open(output) as f:
+        for l in iter(f.readlines()):
+            if l.strip() == 'FALSE':
+                return True
 
     return False
 
 def verify_error_path(benchmark, prpfile, symbiotic_dir):
     # run both checker paralelly
-    cpa = verify_error_path_cpa(benchmark, prpfile, symbiotic_dir)
-    ultimate = verify_error_path_ultimate(benchmark, prpfile, symbiotic_dir)
-    cpa_fd = cpa.stdout.fileno()
-    ultimate_fd = ultimate.stdout.fileno()
+    cpa_outputfile = '{0}.cpa.output'.format(benchmark)
+    ultimate_outputfile = '{0}.ultimate.output'.format(benchmark)
 
-    # poll for results
-    ## --
-    poll = select.poll()
-    poll_add_fd(poll, cpa_fd)
-    poll_add_fd(poll, ultimate_fd)
+    cpa = verify_error_path_cpa(benchmark, cpa_outputfile,
+                                prpfile, symbiotic_dir)
+    ultimate = verify_error_path_ultimate(benchmark, ultimate_outputfile,
+                                          prpfile, symbiotic_dir)
 
     print('=== WITNESS')
-    start_timeout(150)
+    start_timeout(100)
     cpa_result = ''
     ultimate_result = ''
     got = 0
     confirmed = False
     try:
-        while got < 2 and not confirmed:
-            for fd, flags in poll.poll():
-                if flags & select.POLLERR:
-                    if fd == cpa_fd:
-                        cpa_result = 'error'
-                    else:
-                        ultimate_result = 'error'
-
-                if flags & select.POLLIN:
-                    if fd == cpa_fd:
-                        cpa_result, err = cpa.communicate()
-                        got += 1
-                        cpa = None
-                        if cpa_confirmed(cpa_result):
+        processes = [(cpa, cpa_confirmed, cpa_outputfile),
+                     (ultimate, ultimate_confirmed, ultimate_outputfile)]
+        while processes and not confirmed:
+            for p, check, out in processes:
+                retval = p.poll()
+                if not retval is None:
+                    if retval == 0:
+                        if check(out):
                             confirmed = True
-                    else:
-                        ultimate_result, err = ultimate.communicate();
-                        got += 1
-                        ultimate = None
-                        if ultimate_confirmed(ultimate_result):
-                            confirmed = True
-
-                    # err should be None
-                    assert err is None
+                    processes.remove((p,check,out))
+                    break
+            sleep(1)
 
         stop_timeout()
 
@@ -227,20 +272,20 @@ def verify_error_path(benchmark, prpfile, symbiotic_dir):
             print('unconfirmed')
 
         print('=== WITNESS OUTPUT')
-        print('--- CPAchecker output ---')
-        print(cpa_result)
-        print('--- UltimateAutomizer output ---')
-        print(ultimate_result)
         print('--- witness ---')
         print_witness(benchmark)
+        print('--- CPAchecker output ---')
+        print_file(cpa_outputfile)
+        print('--- UltimateAutomizer output ---')
+        print_file(ultimate_outputfile)
     except Timeout:
         print('timeout')
     finally:
         stop_timeout()
-        if cpa:
+        if cpa.poll() is None:
             cpa.terminate()
             cpa.kill()
-        if ultimate:
+        if ultimate.poll() is None:
             ultimate.terminate()
             ultimate.kill()
 
@@ -304,7 +349,8 @@ def parse_args():
                                                       '64', 'prp=', 'old-slicer',
                                                       'require-slicer', 'klee-params=',
                                                       'pta=', 'repeat-slicing=',
-                                                      'no-symexe', 'optimize='])
+                                                      'no-symexe', 'optimize=',
+                                                      'no-runexec'])
     except getopt.GetoptError as e:
         print('{0}'.format(str(e)))
         sys.exit(1)
@@ -348,6 +394,9 @@ def parse_args():
             sys.exit(1)
             global klee_params
             klee_params = arg
+        elif opt == '--no-runexec':
+            global runexec
+            runexec = False
 
     return args
 
@@ -402,46 +451,39 @@ if __name__ == "__main__":
     print('=== RESULT')
     sys.stdout.flush()
 
-    p = run_symbiotic(symbiotic_dir, src)
-    out, err = p.communicate()
+    outputfile = '{0}.output'.format(src)
+    p = run_symbiotic(symbiotic_dir, src, outputfile)
+    p.communicate()
 
     result = None
+
     if p.returncode != 0:
         result = say_result('ERROR')
-        print(out)
     else:
+        outf = open(outputfile, 'r')
         if no_symexe:
-            if out is None:
-                say_result('ERROR')
-            else:
-                for l in iter(out.splitlines()):
-                    if 'Did not find slicing criterion' in l:
-                        result = say_result('TRUE')
-                        break
-                    elif 'TIMEOUT' in l:
-                        result = say_result('TIMEOUT')
-
-                if result is None:
+            for l in iter(outf.readlines()):
+                if 'Did not find slicing criterion' in l:
+                    result = say_result('TRUE')
+                    break
+                elif 'UNKNOWN' in l:
                     result = say_result('UNKNOWN')
-        else:
-            results = ['TRUE', 'UNKNOWN', 'ERROR', 'TIMEOUT']
-            if not out is None:
-                lnum = 0
-                lmax = 100
-                for line in iter(out.splitlines()):
-                    if line == 'FALSE':
-                        result = say_result(line)
-                    elif line in results:
-                        result = say_result(line)
-                    else:
-                        if lnum <= lmax:
-                            print(line)
-                            lnum += 1
+                elif 'TIMEOUT' in l:
+                    result = say_result('TIMEOUT')
 
-                    sys.stdout.flush()
-            else:
+            if result is None:
+                result = say_result('ERROR')
+        else:
+            results = ['FALSE', 'TRUE', 'UNKNOWN', 'ERROR', 'TIMEOUT']
+            for line in iter(outf.readlines()):
+                start = line[:7].strip()
+                if start in results:
+                    result = say_result(start)
+            if result is None:
                 result = say_result('ERROR')
 
+    print('=== OUTPUT')
+    print_file(outputfile)
     sys.stdout.flush()
 
     #say_time('Starting verifier')
@@ -450,7 +492,6 @@ if __name__ == "__main__":
         if is_reach:
             verify_error_path(src, prp, symbiotic_dir)
     elif result is None:
-        print(out)
         say_result('ERROR')
 
     printTimeConsumed()
