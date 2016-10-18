@@ -311,32 +311,26 @@ def printMemoryUsage():
     print(maxrss / 1024.0)
     sys.stdout.flush()
 
-def printVersions(symbiotic_dir):
+def printVersions(symbiotic_dir, bench_dir):
     version = ''
 
-    f = open(os.path.join(symbiotic_dir, 'SYMBIOTIC_VERSION'), 'r')
-    version += 'symb:{0}'.format(f.readline().strip())
-    f.close()
+    cmd = ['./symbiotic', '--version-short']
+    p = subprocess.Popen(cmd, shell=False, cwd='{0}'.format(os.path.abspath(symbiotic_dir)),
+                         stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+    out, err = p.communicate()
+    assert err is None
+    # set the symbiotic version
+    version = out.strip()
 
-    f = open(os.path.join(symbiotic_dir, 'LLVM_NEW_SLICER_VERSION'), 'r')
-    version += '-slicer:{0}'.format(f.readline().strip())
-    f.close()
+    cmd = ['git', 'rev-parse', '--short=8', 'HEAD']
+    p = subprocess.Popen(cmd, shell=False, cwd='{0}'.format(os.path.abspath(bench_dir)),
+                         stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
 
-    f = open(os.path.join(symbiotic_dir, 'SVC_SCRIPTS_VERSION'), 'r')
-    version += '-scripts:{0}'.format(f.readline().strip())
-    f.close()
 
-    f = open(os.path.join(symbiotic_dir, 'KLEE_VERSION'), 'r')
-    version += '-klee:{0}'.format(f.readline().strip())
-    f.close()
-
-    f = open(os.path.join(symbiotic_dir, 'MINISAT_VERSION'), 'r')
-    version += '-minisat:{0}'.format(f.readline().strip())
-    f.close()
-
-    f = open(os.path.join(symbiotic_dir, 'STP_VERSION'), 'r')
-    version += '-stp:{0}'.format(f.readline().strip())
-    f.close()
+    out, err = p.communicate()
+    assert err is None
+    # get versions of benchmarks
+    version += '-benchmarks:{0}'.format(out.strip())
 
     print('=== VERSIONS')
     print(version)
@@ -441,7 +435,7 @@ if __name__ == "__main__":
               '[--prp=property_file] [--64] [--klee-params=p] symbiotic_dir benchmark')
         sys.exit(1)
 
-    printVersions(symbiotic_dir)
+    printVersions(symbiotic_dir, os.path.dirname(benchmark))
 
     src = os.path.abspath(benchmark)
 

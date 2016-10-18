@@ -61,6 +61,9 @@ class BenchmarkReport(object):
         elif s == '=== WITNESS OUTPUT':
             rb._state = 'WITNESS OUTPUT'
             return True
+        elif s == '=== OUTPUT':
+            rb._state = 'OUTPUT'
+            return True
 
         return False
 
@@ -78,7 +81,7 @@ class BenchmarkReport(object):
         if self._changeState(rb, s):
             return
 
-        if rb._state is None:
+        if rb._state is None or rb._state == 'OUTPUT':
             rb.storeOutput('{0}\n'.format(s))
         elif rb._state == 'VERSIONS':
             self.versions(rb, s);
