@@ -34,7 +34,6 @@ import configs
 from common import err, dbg
 from dispatcher import RunningTask
 from log import satt_log
-from database import DatabaseConnection
 
 class BenchmarkReport(object):
     """ Report results of benchmark. This is a abstract class """
@@ -320,6 +319,7 @@ class MysqlReporter(BenchmarkReport):
         # replace apostrophes in tool_params
         self.tool_params = self.tool_params.replace('\'', '\\\'')
 
+        from database import DatabaseConnection
         self._db = DatabaseConnection()
 
         ver = self._db.query('SELECT VERSION()')[0][0]
