@@ -177,22 +177,24 @@ def get_machines():
     return tasks
 
 def assign_set(dirpath, path, tasks, should_skip):
-    # there is not so much of .set files, so there won't be
-    # any significant time penalty if we parse the configs
-    # here every time
-    exclude = configs.configs['exclude'].split(',')
-
     old_dir = os.getcwd()
     epath = expand(dirpath)
     os.chdir(epath)
 
-    bname = os.path.basename(path)
-    for e in exclude:
-        e = e.strip()
-        if re.search(e, bname):
-            print('Skiping {0} benchmarks'.format(bname))
-            os.chdir(old_dir)
-            return False
+    # there is not so much of .set files, so there won't be
+    # any significant time penalty if we parse the configs
+    # here every time
+    if configs.configs.has_key('exclude')\
+        and configs.configs['exclude'].strip() != '':
+        exclude = configs.configs['exclude'].split(',')
+
+        bname = os.path.basename(path)
+        for e in exclude:
+            e = e.strip()
+            if re.search(e, bname):
+                print('Skiping {0} benchmarks'.format(bname))
+                os.chdir(old_dir)
+                return False
 
     try:
         f = open(path, 'r')
@@ -225,7 +227,6 @@ def assign_set(dirpath, path, tasks, should_skip):
     return n != 0
 
 def assign_set_dir(dirpath, tasks, should_skip):
-    dirpath = '{0}/c'.format(dirpath)
     edirpath = os.path.expanduser(dirpath)
     dbg('Looking for benchmarks in: {0}'.format(edirpath))
 
@@ -276,6 +277,7 @@ def get_benchmarks(files, tasks):
         except ValueError:
             err('Invalid tool id for skip-known-benchmarks')
 
+	dbg('Will skip benchmarks from tool {0}'.format(toolid))
         should_skip = lambda x: _should_skip_with_db(dbproxy, toolid, year_id, x)
     else:
         should_skip = lambda x: False
@@ -289,6 +291,7 @@ def get_benchmarks(files, tasks):
         for path in paths:
             # get folder or .set file
             if os.path.isdir(path):
+                path = '{0}/c'.format(path)
                 assign_set_dir(path, tasks, should_skip)
             elif os.path.isfile(path):
                 dirpath = os.path.dirname(path)
