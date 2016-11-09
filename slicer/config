@@ -34,10 +34,10 @@ params = * : --timeout=120 --debug
 # variables can be any of defined above and two
 # special: {machine} and {benchmark} (or synonym {file}) and {params}
 # I think meaning is pretty clear
-remote-cmd = {ssh-cmd} {ssh-user}@{machine} \
-	     '{remote-dir}/satt/slicer/run_benchmark {params} \
-	     					{remote-dir}/slicer \
-						{remote-dir}/{benchmark}'
+cmd = {ssh-cmd} {ssh-user}@{machine} \
+     '{remote-dir}/satt/slicer/run_benchmark {params} \
+     					{remote-dir}/slicer \
+					{remote-dir}/{benchmark}'
 
 # run symbiotic-sync script
 sync-cmd = slicer/slicer-sync.sh {ssh-user}@{machine} '{remote-dir}' {tool-dir}

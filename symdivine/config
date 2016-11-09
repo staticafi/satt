@@ -41,11 +41,11 @@ params = DeviceDrivers64			: --64, \
 # variables can be any of defined above and two
 # special: {machine} and {benchmark} (or synonym {file}) and {params}
 # I think meaning is pretty clear
-remote-cmd = {ssh-cmd} {ssh-user}@{machine} \
-	     '{remote-dir}/satt/symdivine/run_benchmark.py \
-	     						   {remote-dir}/symdivine \
-							   {remote-dir}/{benchmark} \
-							   {params}'
+cmd = {ssh-cmd} {ssh-user}@{machine} \
+     '{remote-dir}/satt/symdivine/run_benchmark.py \
+     						   {remote-dir}/symdivine \
+						   {remote-dir}/{benchmark} \
+						   {params}'
 
 # run symdivine-sync script
 sync-cmd = symdivine/symdivine-sync.sh {ssh-user}@{machine} '{remote-dir}' {tool-dir}
