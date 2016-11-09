@@ -146,7 +146,7 @@ def get_machines():
     try:
         f = open(path, 'r')
     except IOError as e:
-        err("Failed opening file with machines: {0}".format(e.strerror))
+        err("Failed opening file with machines ({0}): {1}\n".format(path, e.strerror))
 
     parallel = 1
     tasks = []
