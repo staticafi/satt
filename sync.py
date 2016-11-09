@@ -90,8 +90,7 @@ class SyncDispatcher(Dispatcher):
                          ' syncing benchmarks failed'.format(t.getMachine()), 'red'))
                 tasks.remove(t)
 
-    # do the same as dispatcher, but run sync-cmd instead
-    # of remote-cmd
+    # do the same as dispatcher, but run sync-cmd instead of cmd
     def _runBenchmark(self, task):
         bench = task.runBenchmark(configs['sync-cmd'])
         if bench is None:

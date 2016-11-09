@@ -208,7 +208,7 @@ class Dispatcher(object):
     def _runBenchmark(self, task):
         """ Run another benchmark from task """
 
-        bench = task.runBenchmark(configs['remote-cmd'])
+        bench = task.runBenchmark(configs['cmd'])
         if bench is None: # no more tests to run
             return None
 

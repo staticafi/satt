@@ -29,7 +29,7 @@ import getopt
 import time
 
 allowed_keys = ['tool-dir', 'remote-dir', 'benchmarks', 'machines',
-                'ssh-user', 'ssh-cmd', 'remote-cmd', 'sync', 'timeout',
+                'ssh-user', 'ssh-cmd', 'cmd', 'sync', 'timeout',
                 'no-db', 'sync-cmd', 'year', 'params', 'exclude', 'note',
                 'tool-tag']
 
@@ -75,11 +75,12 @@ tool_dir  \
 In config file, there are few keys that are searched for:
 tool-dir      -- directory that contains the tool
 remote-dir    -- where will we work on remote machines
-remote-cmd    -- command to run the test on remote computer. This command
-                 is run _localy_, so it will probably begin with: ssh user@{machine}
+cmd           -- command to run for each benchmark. This command is run as given
+                 (on local computer), therfore to run a test on remote computer,
+		 the command will probably call ssh
 timeout       -- timeout for tests
-sync-cmd      -- run this command before running tests to sync tool on remote
-                 computers
+sync-cmd      -- run this command before running tests to sync tool and benchmarks
+                 on remote computers
 year          -- specify year of sv-comp. The benchmarks will be checked out to this tag
 
 There are two special variables {benchmark} (synonym {file}) and {machine}
@@ -109,7 +110,7 @@ Allowed keys in config file:
 
 # fill in default values
 configs = {'sync':'yes', 'ssh-user':'', 'remote-dir':'',
-           'remote-cmd':'echo "ERROR: No command specified"',
+           'cmd':'echo "No command specified for file: {file}"',
            'no-db':'no', 'debug':'no', 'tool':'symbiotic',
            'year':'master', 'params':{'*':''}, 'exclude':'',
            'started_at' : time.strftime('%Y-%m-%d-%H-%S'), 'note':'',
