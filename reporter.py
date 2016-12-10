@@ -95,6 +95,10 @@ class BenchmarkReport(object):
         elif rb._state == 'WITNESS OUTPUT':
             self.witnessOutput(rb, s);
 
+    def summary(self):
+        "Give summary of the run"
+        pass
+
     def done(self, rb):
         " The benchmark is done"
         raise NotImplementedError("Child class needs to override this method")
@@ -103,17 +107,15 @@ class BenchmarkReport(object):
         self._progress = progress
 
     def result(self, rb, msg):
-        m = msg.upper()
-
-        if m == 'TIMEOUT':
+        if msg == 'TIMEOUT':
             rb.result = 'TIMEOUT'
-        elif m == 'FALSE':
+        elif msg.startswith('FALSE'):
             rb.result = 'FALSE'
-        elif m == 'ERROR':
+        elif msg == 'ERROR':
             rb.result = 'ERROR'
-        elif m == 'TRUE':
+        elif msg == 'TRUE':
             rb.result = 'TRUE'
-        elif m == 'UNKNOWN':
+        elif msg == 'UNKNOWN':
             rb.result = 'UNKNOWN'
         else:
             rb.storeOutput('RESULT: {0}\n'.format(msg))
@@ -150,8 +152,19 @@ class BenchmarkReport(object):
 
 class StdoutReporter(BenchmarkReport):
     """ Report results of benchmark to stdout """
+    def __init__(self):
+        BenchmarkReport.__init__(self)
+        self._incorrect_results = []
+        self._correct_true_results_num = 0
+        self._correct_false_results_num = 0
+        self._incorrect_true_results_num = 0
+        self._incorrect_false_results_num = 0
+        self._error_results_num = 0
+        self._unknown_results_num = 0
+        self._total_num = 0
 
     def done(self, rb):
+        self._total_num += 1
         mach = rb.task.getMachine()
         name = rb.name
 
@@ -162,20 +175,28 @@ class StdoutReporter(BenchmarkReport):
 
         if rb.result == 'ERROR' or rb.result is None:
             color = 'red_bg'
+            self._error_results_num += 1
         elif rb.result == 'UNKNOWN':
             color = 'yellow'
+            self._unknown_results_num += 1
         elif rb.result == 'TRUE':
             # if there is not true or false is before true
             # in the name
             if t == -1 or (f != -1 and f < t):
                 color = 'red'
+                self._incorrect_true_results_num += 1
+                self._incorrect_results.append(rb.name)
             else:
+                self._correct_true_results_num += 1
                 color = 'green'
         elif rb.result == 'FALSE':
             if f == -1 or (t != -1 and t < f):
                 color = 'red'
+                self._incorrect_false_results_num += 1
+                self._incorrect_results.append(rb.name)
             else:
                 color = 'green'
+                self._correct_false_results_num += 1
 
             if color == 'green' and rb.witness != '':
                 wtns = rb.witness.strip()
@@ -201,6 +222,25 @@ class StdoutReporter(BenchmarkReport):
             return False
 
         return True
+    def summary(self):
+        incorrect_results_num = self._incorrect_false_results_num + self._incorrect_true_results_num
+
+        satt_log("-----------------------------------------------------------------------")
+        satt_log(" -| Ran in total {0} benchmarks of which {1} were answered incorrectly"\
+                 .format(self._total_num, incorrect_results_num))
+        satt_log(" -|")
+        satt_log(" -| Correct   TRUE  results: {0}".format(self._correct_true_results_num))
+        satt_log(" -| Correct   FALSE results: {0}".format(self._correct_false_results_num))
+        satt_log(" -| Incorrect TRUE  results: {0}".format(self._incorrect_true_results_num))
+        satt_log(" -| Incorrect FALSE results: {0}".format(self._incorrect_false_results_num))
+        satt_log(" -| UNKNOWN         results: {0}".format(self._unknown_results_num))
+        satt_log(" -| ERROR           results: {0}".format(self._error_results_num))
+        satt_log(" -|")
+        if incorrect_results_num > 0:
+            satt_log(" -| Incorrect results:")
+            for b in self._incorrect_results:
+                satt_log("   -- {0}".format(b))
+        satt_log("-----------------------------------------------------------------------")
 
 class RatingMethod(object):
     def __init__(self, query_func):
