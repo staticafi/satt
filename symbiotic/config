@@ -12,9 +12,8 @@ year = master
 benchmarks = /var/research/satt/benchmarks
 # these are included in the other sets
 # or we don't want to run them
-exclude = .*\.false-unreach-call.set, ECA.set,\
-	  ECA-validate.set, DriverChallenges.set, Termination.set, \
-	  .*-validate.set
+exclude = .*\.false-unreach-call.set,\
+ 	  .*-validate.set, Termination.*.set, DriverChallenges.set, ECA.set
 
 # list of machines
 machines = stations.txt
@@ -24,10 +23,10 @@ machines = stations.txt
 # '*' stands for every set
 # {benchmark-dirname} is special variable that expands to the directory containing
 # benchmark
-params = DeviceDriversLinux64			: --64, \
-	 Termination				: --64, \
-	 BusyBox				: --64, \
-	 *					: --timeout=120
+params = Systems_DeviceDriversLinux64_ReachSafety	: --64, \
+	 Systems_BusyBox_Overflows			: --64, \
+	 Systems_BusyBox_MemSafety			: --64, \
+	 *						: --timeout=120 --cat={category}
 
 # use variables, whoohoo!
 # variables can be any of defined above and two
