@@ -459,7 +459,7 @@ class MysqlReporter(BenchmarkReport):
 
         # return the new result
         q = """
-        SELECT id FROM categories
+        SELECT id, name FROM categories
         WHERE
             year_id = '{0}' and name = '{1}';
         """.format(year_id, name)
