@@ -110,6 +110,9 @@ class Task(object):
         ecmd = ecmd.replace('{benchmark-dirname}', os.path.dirname(name))
         ecmd = ecmd.replace('{file-dirname}', os.path.dirname(name))
 
+        # expand explicit name of category
+        ecmd = ecmd.replace('{category}', cat)
+
         return ecmd
 
     def runBenchmark(self, cmd):
