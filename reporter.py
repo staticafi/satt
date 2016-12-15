@@ -35,11 +35,50 @@ from common import err, dbg
 from dispatcher import RunningTask
 from log import satt_log
 
+def get_correct_result_from_name(name, true_spec, false_spec):
+    """
+    Returns 'true' or 'false' depending on what of these words
+    occurrs earlier in the name. If none of these is contained
+    in the name, return None
+    """
+    is_true = False
+    is_false = False
+
+    for x in true_spec:
+        if x in name:
+            is_true = True
+            break;
+
+    for x in false_spec:
+        if x in name:
+            is_false = True
+            break;
+
+    if is_true and is_false:
+        return None
+
+    if is_true:
+        return 'TRUE'
+    elif is_false:
+        return 'FALSE'
+    else:
+        return None
+
+
 class BenchmarkReport(object):
     """ Report results of benchmark. This is a abstract class """
 
     def __init__(self):
         self._progress = 0
+
+        self._keywords = {
+            'reach'     : (['true-unreach-call'], ['false-unreach-call']),
+            'memsafety' : (['true-valid-memsafety'], ['false-valid-deref',
+                                                      'false-valid-memtrack',
+                                                      'false-valid-free']),
+            'overflow'  : (['true-no-overflow'], ['false-no-overflow']),
+            'undef'     : (['true-def-behavior'], ['false-def-behavior'])
+        }
 
     def _changeState(self, rb, s):
         if s == '=== VERSIONS':
@@ -150,6 +189,18 @@ class BenchmarkReport(object):
     def sendEmail(self, server, from_addr, to_addrs):
         pass
 
+    def _get_correct_result(self, name, rb):
+        if 'Reach' in rb.category:
+            keywords = self._keywords['reach']
+        elif 'MemSafety' in rb.category:
+            keywords = self._keywords['memsafety']
+        elif 'Overflow' in rb.category:
+            keywords = self._keywords['overflow']
+        elif 'DefinedBehavior' in rb.category:
+            keywords = self._keywords['undef']
+
+        return get_correct_result_from_name(name, keywords[0], keywords[1])
+
 class StdoutReporter(BenchmarkReport):
     """ Report results of benchmark to stdout """
     def __init__(self):
@@ -170,8 +221,7 @@ class StdoutReporter(BenchmarkReport):
 
         color = None
         result = rb.result
-        t = rb.name.find('true')
-        f = rb.name.find('false')
+        correct = self._get_correct_result(os.path.basename(name), rb)
 
         if rb.result == 'ERROR' or rb.result is None:
             color = 'red_bg'
@@ -179,10 +229,13 @@ class StdoutReporter(BenchmarkReport):
         elif rb.result == 'UNKNOWN':
             color = 'yellow'
             self._unknown_results_num += 1
+        elif correct is None:
+            color = 'red_bg'
+            rb.result = 'cannot_decide ({0})'.format(rb.result)
         elif rb.result == 'TRUE':
             # if there is not true or false is before true
             # in the name
-            if t == -1 or (f != -1 and f < t):
+            if correct != 'TRUE':
                 color = 'red'
                 self._incorrect_true_results_num += 1
                 self._incorrect_results.append(rb.name)
@@ -190,7 +243,7 @@ class StdoutReporter(BenchmarkReport):
                 self._correct_true_results_num += 1
                 color = 'green'
         elif rb.result == 'FALSE':
-            if f == -1 or (t != -1 and t < f):
+            if correct != 'FALSE':
                 color = 'red'
                 self._incorrect_false_results_num += 1
                 self._incorrect_results.append(rb.name)
@@ -309,42 +362,7 @@ def is_correct(res1, res2):
     return 0
 
 def get_name(name):
-    n = 0
-    i = len(name) - 1
-    while i  >= 0:
-        if name[i] == '/':
-            n += 1
-
-            if n == 2:
-                break
-
-        i -= 1
-
-    return name[i + 1:]
-
-def get_correct_result(name):
-    """
-    Returns 'true' or 'false' depending on what of these words
-    occurrs earlier in the name. If none of these is contained
-    in the name, return None
-    """
-
-    ti = name.find('true')
-    fi = name.find('false')
-
-    # we must have either one or the other
-    if ti == -1 and fi == -1:
-        return None
-
-    if ti == -1:
-        return 'false'
-    elif fi == -1:
-        return 'true'
-    else: # both of the words are in the name
-        if ti < fi:
-            return 'true'
-        else:
-            return 'false'
+    return os.path.basename(name)
 
 class MysqlReporter(BenchmarkReport):
     def __init__(self):
@@ -421,17 +439,12 @@ class MysqlReporter(BenchmarkReport):
         """ Save unknown task into the database """
 
         name = get_name(rb.name)
-
-        # get correct result - if it can not be derived from the
-        # benchmarks name, it we should be able to derive it from
-        # the category name
-        cr = get_correct_result(name)
+        cr = self._get_correct_result(name, rb)
         if cr is None:
-            cr = get_correct_result(rb.category)
-        if cr is None:
-            satt_log('Couldn\'t infer if the result is correct or not, setting unkown')
+            msg = 'Couldn\'t infer if the result is correct or not, setting unkown'
+            satt_log(msg)
+            rb.output += msg
             rb.result = 'unknown ({0})'.format(rb.result)
-
         # create new task
         q = """
         INSERT INTO tasks

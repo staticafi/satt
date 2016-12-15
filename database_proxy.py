@@ -83,53 +83,8 @@ def Empty2Null(x):
         return 'NULL'
 
     return '\'{0}\''.format(x.strip())
-
-def is_correct(res1, res2):
-    if res1 is None or res2 is None:
-        return 0
-
-    if res1.upper() == res2.upper():
-        return 1
-
-    return 0
-
 def get_name(name):
-    n = 0
-    i = len(name) - 1
-    while i  >= 0:
-        if name[i] == '/':
-            n += 1
-
-            if n == 2:
-                break
-
-        i -= 1
-
-    return name[i + 1:]
-
-def get_correct_result(name):
-    """
-    Returns 'true' or 'false' depending on what of these words
-    occurrs earlier in the name. If none of these is contained
-    in the name, return None
-    """
-
-    ti = name.find('true')
-    fi = name.find('false')
-
-    # we must have either one or the other
-    if ti == -1 and fi == -1:
-        return None
-
-    if ti == -1:
-        return 'false'
-    elif fi == -1:
-        return 'true'
-    else: # both of the words are in the name
-        if ti < fi:
-            return 'true'
-        else:
-            return 'false'
+    return os.path.basename(name)
 
 class DatabaseProxy(object):
     def __init__(self, conffile = None):
