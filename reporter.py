@@ -264,7 +264,6 @@ class RatingMethod(object):
        if res is None:
            return 0
 
-       print(categ)
        no_wittness_categories = ['ArraysReach', 'ArraysMemSafety', 'Concurrency',
                                  'Floats', 'HeapMemSafety', 'Termination']
        res = res.lower()
@@ -490,6 +489,8 @@ class MysqlReporter(BenchmarkReport):
                 return True
 
         assert len(res) == 1
+        if not len(res[0]) == 2:
+            print(res[0])
         assert len(res[0]) == 2
         cat_id = res[0][0]
         cat_name = res[0][1]
