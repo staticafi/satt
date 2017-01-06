@@ -25,6 +25,7 @@
 
 import configs
 
+from os.path import basename
 from common import err, dbg
 from dispatcher import RunningTask
 from log import satt_log
@@ -83,8 +84,9 @@ def Empty2Null(x):
         return 'NULL'
 
     return '\'{0}\''.format(x.strip())
+
 def get_name(name):
-    return os.path.basename(name)
+    return basename(name)
 
 class DatabaseProxy(object):
     def __init__(self, conffile = None):
