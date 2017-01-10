@@ -295,6 +295,13 @@ class StdoutReporter(BenchmarkReport):
                 satt_log("   -- {0}".format(b))
         satt_log("-----------------------------------------------------------------------")
 
+def no_witness_categ(categ):
+    # we're missing the Termination and Concurrency
+    return categ.endswith('-Arrays') or\
+           categ.endswith('-Floats') or\
+           categ.endswith('-Heap') or\
+           'MemSafety' in categ
+
 class RatingMethod(object):
     def __init__(self, query_func):
         res = query_func('SELECT unknown, false_correct, false_incorrect,'
@@ -317,16 +324,13 @@ class RatingMethod(object):
        if res is None:
            return 0
 
-       no_wittness_categories = ['ArraysReach', 'ArraysMemSafety', 'Concurrency',
-                                 'Floats', 'HeapMemSafety', 'Termination']
        res = res.lower()
 
        if res == 'unknown' or res == 'error' or res == 'timeout':
            return self.unknown
        elif res == 'false':
            if ok:
-                if witness == 'confirmed' or\
-                   categ in no_wittness_categories:
+                if witness == 'confirmed' or no_witness_categ(categ):
                     return self.false_correct
                 else:
                     return self.unknown
