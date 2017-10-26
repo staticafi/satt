@@ -78,17 +78,17 @@ class SyncDispatcher(Dispatcher):
 
             # also we need synchronize benchmarks on remote directory,
             # so call sync-benchmarks.sh for this machine
-            dbg('Synchronizing benchmarks on {0}'.format(t.getMachine()))
-            ret = subprocess.call(['./sync-benchmarks.sh', m,
-                                   configs['remote-dir'],
-                                   expand(configs['benchmarks']),
-                                   configs['year']])
+           #dbg('Synchronizing benchmarks on {0}'.format(t.getMachine()))
+           #ret = subprocess.call(['./sync-benchmarks.sh', m,
+           #                       configs['remote-dir'],
+           #                       expand(configs['benchmarks']),
+           #                       configs['year']])
 
-            # if syncing failed, remove the task from tasks
-            if ret != 0:
-                satt_log(colored('Removing machine {0} because'
-                         ' syncing benchmarks failed'.format(t.getMachine()), 'red'))
-                tasks.remove(t)
+           ## if syncing failed, remove the task from tasks
+           #if ret != 0:
+           #    satt_log(colored('Removing machine {0} because'
+           #             ' syncing benchmarks failed'.format(t.getMachine()), 'red'))
+           #    tasks.remove(t)
 
     # do the same as dispatcher, but run sync-cmd instead of cmd
     def _runBenchmark(self, task):

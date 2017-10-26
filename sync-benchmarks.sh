@@ -1,6 +1,9 @@
 #!/bin/sh
 
 # synchronize benchmarks repository
+
+exit 0
+
 sync_benchmarks()
 {
 	MACHINE="$1"
@@ -29,6 +32,6 @@ REMOTE_DIR="$2"
 BENCHMARKS_DIR="$3"
 YEAR="$4"
 
-sync_benchmarks "$MACHINE" "$REMOTE_DIR" "$BENCHMARKS_DIR" "$YEAR" || exit 1
+#sync_benchmarks "$MACHINE" "$REMOTE_DIR" "$BENCHMARKS_DIR" "$YEAR" || exit 1
 
 exit 0

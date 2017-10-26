@@ -1,8 +1,8 @@
 # configuration for arran.fi.muni.cz
 
 ssh-cmd = /usr/bin/ssh
-ssh-user = statica
-tool-dir = /var/research/satt/symbiotic
+ssh-user = xchalup4
+tool-dir = ~/symbiotic-3.9.1
 remote-dir = ~
 
 tool-tag = symbiotic
@@ -12,8 +12,10 @@ year = master
 benchmarks = /var/research/satt/benchmarks
 # these are included in the other sets
 # or we don't want to run them
-exclude = .*\.false-unreach-call.set,\
- 	  .*-validate.set, Termination.*.set, DriverChallenges.set, ECA.set
+#exclude = .*DefinedBehavior.*, .*Termination.*, .*Concurrency.*, .*ECA.*,\
+#          .*Overflow.*, .*ReachSafety.*, .*BusyBox.*
+exclude = .*DefinedBehavior.*, .*Termination.*, .*Concurrency.*, .*ECA.*,\
+          .*ProductLines.*, .*DeviceDrivers.*
 
 # list of machines
 machines = stations.txt
@@ -26,16 +28,13 @@ machines = stations.txt
 params = Systems_DeviceDriversLinux64_ReachSafety	: --64, \
 	 Systems_BusyBox_Overflows			: --64, \
 	 Systems_BusyBox_MemSafety			: --64, \
-	 *						: --timeout=120 --cat={category}
+	 *						: --timeout=100 --32 \
+	                                                  --tool=klee --cat={category}
 
-# use variables, whoohoo!
-# variables can be any of defined above and two
-# special: {machine} and {benchmark} (or synonym {file}) and {params}
-# I think meaning is pretty clear
 cmd = {ssh-cmd} {ssh-user}@{machine} \
-     '{remote-dir}/satt/symbiotic/run_benchmark {params} \
-     						{remote-dir}/symbiotic \
-						{remote-dir}/{benchmark}'
+	     '{remote-dir}/satt/symbiotic/run_benchmark {params} \
+	     						{remote-dir}/symbiotic-3.9.1/ \
+							{benchmark}'
 
 # run symbiotic-sync script
 sync-cmd = symbiotic/symbiotic-sync.sh {ssh-user}@{machine} '{remote-dir}' {tool-dir}

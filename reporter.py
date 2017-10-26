@@ -198,6 +198,10 @@ class BenchmarkReport(object):
             keywords = self._keywords['overflow']
         elif 'DefinedBehavior' in rb.category:
             keywords = self._keywords['undef']
+        else:
+            #FIXME
+            print("UNKNOWN CATEGORY!");
+            return None
 
         return get_correct_result_from_name(name, keywords[0], keywords[1])
 
@@ -433,6 +437,7 @@ class MysqlReporter(BenchmarkReport):
 
             # get new tool_id
             res = self._db.query(q)
+            print(res)
             assert len(res) == 1
 
         tool_id = res[0][0]
