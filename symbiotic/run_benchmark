@@ -59,7 +59,7 @@ class SymbioticRunner(object):
 
     def _get_cmd(self, benchmark, outputfile):
         if runexec:
-            cmd = ['runexec', '--no-container']#, '--cores=1']
+            cmd = ['runexec', '--no-container', '--cores=1']
             if timeout != 0:
                 cmd += ['--timelimit={0}'.format(timeout)]
                         #'--walltimelimit={0}'.format(timeout)]
@@ -140,7 +140,7 @@ def verify_error_path_cpa(benchmark, witness, outfile, prpfile, symbiotic_dir):
     benchabs = os.path.abspath(benchmark)
     prpfile = os.path.abspath(os.path.expanduser(prpfile))
     if runexec:
-        cmd = ['runexec', '--no-container']#, '--cores=1']
+        cmd = ['runexec', '--no-container', '--cores=1']
         if timeout != 0:
             cmd += ['--timelimit={0}'.format(90)]#, '--softtimelimit={0}'.format(90)]
         cmd += ['--output={0}'.format(outfile), '--']
@@ -168,7 +168,7 @@ def verify_error_path_ultimate(benchmark, witness, outfile, prpfile, symbiotic_d
     benchabs = os.path.abspath(benchmark)
     prpfile = os.path.abspath(os.path.expanduser(prpfile))
     if runexec:
-        cmd = ['runexec', '--no-container']#, '--cores=1']
+        cmd = ['runexec', '--no-container', '--cores=1']
         if timeout != 0:
             cmd += ['--timelimit={0}'.format(90)]#, '--timelimit={0}'.format(93)]
         cmd += ['--output={0}'.format(outfile), '--']
@@ -307,7 +307,7 @@ def printVersions(symbiotic_dir):
     version = out.strip()
 
     print('=== VERSIONS')
-    print(version)
+    print(version+'dense')
     sys.stdout.flush()
 
 def get_prp(prp):
@@ -538,17 +538,13 @@ def run_on_tool(src, tool):
 
     return info
 
-def move_symbiotic(path, tmpdir):
+def get_symbiotic_dir(path, tmpdir):
     """
     Move symbiotic into a tmp directory (if it is not there yet)
     so that we do not create too much trafic on NFS
     """
     symbdir = '{0}/symbiotic'.format(tmpdir)
-    if not os.path.isdir(symbdir):
-        cmd = ['cp', '-r', path, symbdir]
-        ret = subprocess.call(cmd)
-        assert ret == 0
-
+    assert os.path.isdir(symbdir)
     assert os.path.isfile('{0}/bin/symbiotic'.format(symbdir))
     return symbdir
 
@@ -591,11 +587,10 @@ if __name__ == "__main__":
     setup_benchexec()
 
     tmpdir = '/var/tmp/symbiotic-{0}'.format(os.getenv('USER'))
-    if not os.path.isdir(tmpdir):
-        os.mkdir(tmpdir)
+    assert os.path.isdir(tmpdir)
 
     if len(pths) == 2:
-        symbiotic_dir = move_symbiotic(os.path.abspath(pths[0]), tmpdir)
+        symbiotic_dir = get_symbiotic_dir(os.path.abspath(pths[0]), tmpdir)
         assert os.path.isfile('{0}/bin/symbiotic'.format(symbiotic_dir))
         benchmark = pths[1]
     else:
@@ -649,5 +644,5 @@ if __name__ == "__main__":
         verify_error_path(src, witness, prp, symbiotic_dir)
 
     # remove the downloaded benchmark
-    #os.unlink(src)
+    os.unlink(src)
 

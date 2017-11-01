@@ -15,7 +15,7 @@ benchmarks = /var/research/satt/benchmarks
 #exclude = .*DefinedBehavior.*, .*Termination.*, .*Concurrency.*, .*ECA.*,\
 #          .*Overflow.*, .*ReachSafety.*, .*BusyBox.*
 exclude = .*DefinedBehavior.*, .*Termination.*, .*Concurrency.*, .*ECA.*,\
-          .*ProductLines.*, .*DeviceDrivers.*
+          .*ProductLines.*, .*DeviceDrivers.*, .*Sequentialized.*
 
 # list of machines
 machines = stations.txt
@@ -25,10 +25,25 @@ machines = stations.txt
 # '*' stands for every set
 # {benchmark-dirname} is special variable that expands to the directory containing
 # benchmark
-params = Systems_DeviceDriversLinux64_ReachSafety	: --64, \
-	 Systems_BusyBox_Overflows			: --64, \
-	 Systems_BusyBox_MemSafety			: --64, \
-	 *						: --timeout=100 --32 \
+params = DefinedBehavior-Arrays				: --32, \
+	 MemSafety-Arrays				: --32, \
+	 MemSafety-Heap					: --32, \
+	 MemSafety-LinkedLists				: --32, \
+	 MemSafety-Other				: --32, \
+	 NoOverflows-Other				: --32, \
+	 ReachSafety-Arrays				: --32, \
+	 ReachSafety-Arrays-new				: --32, \
+	 ReachSafety-BitVectors				: --32, \
+	 ReachSafety-ControlFlow			: --32, \
+	 ReachSafety-ECA				: --32, \
+	 ReachSafety-Floats				: --32, \
+	 ReachSafety-Heap				: --32, \
+	 ReachSafety-Loops				: --32, \
+	 ReachSafety-ProductLines			: --32, \
+	 ReachSafety-Recursive				: --32, \
+	 ReachSafety-Sequentialized			: --32, \
+	 ReachSafety-ECA				: --32, \
+	 *						: --timeout=100 \
 	                                                  --tool=klee --cat={category}
 
 cmd = {ssh-cmd} {ssh-user}@{machine} \
@@ -37,4 +52,4 @@ cmd = {ssh-cmd} {ssh-user}@{machine} \
 							{benchmark}'
 
 # run symbiotic-sync script
-sync-cmd = symbiotic/symbiotic-sync.sh {ssh-user}@{machine} '{remote-dir}' {tool-dir}
+sync-cmd = symbiotic/symbiotic-sync.sh {ssh-user}@{machine} '{remote-dir}' '{tool-dir}'

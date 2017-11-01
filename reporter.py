@@ -437,7 +437,6 @@ class MysqlReporter(BenchmarkReport):
 
             # get new tool_id
             res = self._db.query(q)
-            print(res)
             assert len(res) == 1
 
         tool_id = res[0][0]
