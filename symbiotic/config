@@ -2,7 +2,9 @@
 
 ssh-cmd = /usr/bin/ssh
 ssh-user = xchalup4
+# path to the tool on the remote computer
 tool-dir = ~/symbiotic-3.9.1
+# remote directory used by satt
 remote-dir = ~
 
 tool-tag = symbiotic
@@ -14,8 +16,12 @@ benchmarks = /var/research/satt/benchmarks
 # or we don't want to run them
 #exclude = .*DefinedBehavior.*, .*Termination.*, .*Concurrency.*, .*ECA.*,\
 #          .*Overflow.*, .*ReachSafety.*, .*BusyBox.*
-exclude = .*DefinedBehavior.*, .*Termination.*, .*Concurrency.*, .*ECA.*,\
-          .*ProductLines.*, .*DeviceDrivers.*, .*Sequentialized.*
+exclude = .*Termination.*, .*Concurrency.*, .*ECA.*,\
+          .*DeviceDrivers.*, .*DefinedBehavior.*
+#, .*ProductLines.*
+#, .*ProductLines.*, .*ECA.*, .*DeviceDrivers.*
+#, .*DefinedBehavior.*
+#, .*ECA.*, .*ProductLines.*, .*DeviceDrivers.*, .*Sequentialized.*
 
 # list of machines
 machines = stations.txt
@@ -43,13 +49,12 @@ params = DefinedBehavior-Arrays				: --32, \
 	 ReachSafety-Recursive				: --32, \
 	 ReachSafety-Sequentialized			: --32, \
 	 ReachSafety-ECA				: --32, \
-	 *						: --timeout=100 \
-	                                                  --tool=klee --cat={category}
+	 *						: --timeout=121 \
+	                                                  --tool=klee --cat={category} \
+							  --debug=slicer
 
 cmd = {ssh-cmd} {ssh-user}@{machine} \
-	     '{remote-dir}/satt/symbiotic/run_benchmark {params} \
-	     						{remote-dir}/symbiotic-3.9.1/ \
-							{benchmark}'
+	     '{remote-dir}/satt/symbiotic/run_benchmark {params} {tool-dir} {benchmark}'
 
 # run symbiotic-sync script
 sync-cmd = symbiotic/symbiotic-sync.sh {ssh-user}@{machine} '{remote-dir}' '{tool-dir}'

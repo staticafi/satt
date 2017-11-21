@@ -15,7 +15,7 @@ from time import sleep
 from tempfile import mkdtemp
 from collections import deque
 
-debug = False
+debug = None
 timeout=0
 slce = True
 old_slicer = False
@@ -26,11 +26,12 @@ prpfile = None
 klee_params = None
 pta = None
 repeat_slicing = 1
-no_symexe = False
+no_verification = False
 optimize=None
 runexec=True
 exact_tool = None
 disable_instr_plugins = False
+verify_witness = True
 
 running_processes = []
 
@@ -58,10 +59,14 @@ class SymbioticRunner(object):
         self._dir = symbdir
 
     def _get_cmd(self, benchmark, outputfile):
+        benchabs = os.path.abspath(benchmark)
+
         if runexec:
-            cmd = ['runexec', '--no-container', '--cores=1']
+            cmd = ['runexec', '--container',
+                   '--full-access-dir={0}'.format(os.path.dirname(benchabs))]
             if timeout != 0:
-                cmd += ['--timelimit={0}'.format(timeout)]
+                cmd += ['--timelimit={0}'.format(timeout+2),
+                        '--softtimelimit={0}'.format(timeout)]
                         #'--walltimelimit={0}'.format(timeout)]
             cmd += ['--output={0}'.format(outputfile), '--']
         else:
@@ -69,7 +74,7 @@ class SymbioticRunner(object):
 
         cmd += ['{0}/bin/symbiotic'.format(self._dir)]
         if debug:
-            cmd.append('--debug=all')
+            cmd.append('--debug={0}'.format(debug))
 
         if not prp is None:
            cmd.append('--prp={0}'.format(os.path.expanduser(prp)))
@@ -92,8 +97,8 @@ class SymbioticRunner(object):
         if require_slicer:
             cmd.append('--require-slicer')
 
-        if no_symexe:
-            cmd.append('--no-symexe')
+        if no_verification:
+            cmd.append('--no-verification')
 
         if disable_instr_plugins:
             cmd.append('--disable-instr-plugins')
@@ -111,7 +116,6 @@ class SymbioticRunner(object):
 
        #cmd.append('--malloc-never-fails')
 
-        benchabs = os.path.abspath(benchmark)
         witnessfile = '--witness={0}.graphml'.format(benchabs)
         cmd.append(witnessfile)
 
@@ -136,22 +140,31 @@ class SymbioticRunner(object):
 
         return p
 
-def verify_error_path_cpa(benchmark, witness, outfile, prpfile, symbiotic_dir):
+def verify_error_path_cpa(benchmark, witness, outfile, prpfile, symbiotic_dir, mode = '-witnessValidation'):
     benchabs = os.path.abspath(benchmark)
     prpfile = os.path.abspath(os.path.expanduser(prpfile))
     if runexec:
-        cmd = ['runexec', '--no-container', '--cores=1']
+        cmd = ['runexec', '--container']
         if timeout != 0:
-            cmd += ['--timelimit={0}'.format(90)]#, '--softtimelimit={0}'.format(90)]
+            cmd += ['--timelimit=93', '--softtimelimit=90']
         cmd += ['--output={0}'.format(outfile), '--']
     else:
         cmd = []
 
-    cmd += ['scripts/cpa.sh', '-config', 'config/witness-validation.properties',
-            '-disable-java-assertions', '-heap', '10000m',
-            '-setprop', 'cpa.arg.errorPath.graphml=violation-witness.graphml',
-            '-spec', witness, '-timelimit', '90s',
-            '-spec', prpfile, benchabs]
+    if arch == '32bit':
+        cpaarch = '-32'
+    else:
+        cpaarch = '-64'
+
+    cmd += ['scripts/cpa.sh', mode, '-setprop',
+            'witness.checkProgramHash=false', '-disable-java-assertions',
+            '-heap', '5000m', '-witness', witness,
+            '-timelimit', '90s', '-spec', prpfile, cpaarch, benchabs]
+   #cmd += ['scripts/cpa.sh', '-config', 'config/witness-validation.properties',
+   #        '-disable-java-assertions', '-heap', '10000m',
+   #        '-setprop', 'cpa.arg.errorPath.graphml=violation-witness.graphml',
+   #        '-spec', witness, '-timelimit', '90s',
+   #        '-spec', prpfile, benchabs]
 
     if not runexec:
         outf = open(outfile, 'w')
@@ -168,9 +181,9 @@ def verify_error_path_ultimate(benchmark, witness, outfile, prpfile, symbiotic_d
     benchabs = os.path.abspath(benchmark)
     prpfile = os.path.abspath(os.path.expanduser(prpfile))
     if runexec:
-        cmd = ['runexec', '--no-container', '--cores=1']
+        cmd = ['runexec', '--container']
         if timeout != 0:
-            cmd += ['--timelimit={0}'.format(90)]#, '--timelimit={0}'.format(93)]
+            cmd += ['--softtimelimit=90', '--timelimit=93']
         cmd += ['--output={0}'.format(outfile), '--']
     else:
         cmd = []
@@ -239,12 +252,16 @@ def ultimate_confirmed(output):
 def verify_error_path(benchmark, witness, prpfile, symbiotic_dir):
     # run both checker paralelly
     cpa_outputfile = '{0}/CPAchecker/{1}.cpa.output'.format(symbiotic_dir, benchmark)
-    ultimate_outputfile = '{0}/UltimateAutomizer/{1}.ultimate.output'.format(symbiotic_dir, benchmark)
+    ultimate_outputfile = '{0}/CPAchecker/{1}.w2t.output'.format(symbiotic_dir, benchmark)
+    #ultimate_outputfile = '{0}/UltimateAutomizer/{1}.ultimate.output'.format(symbiotic_dir, benchmark)
 
     cpa = verify_error_path_cpa(benchmark, witness, cpa_outputfile,
                                 prpfile, symbiotic_dir)
-    ultimate = verify_error_path_ultimate(benchmark, witness, ultimate_outputfile,
-                                          prpfile, symbiotic_dir)
+    ultimate = verify_error_path_cpa(benchmark, witness, ultimate_outputfile,
+                                prpfile, symbiotic_dir, '-witness2test')
+
+    #verify_error_path_ultimate(benchmark, witness, ultimate_outputfile,
+    #                                      prpfile, symbiotic_dir)
 
 
     print('=== WITNESS')
@@ -307,7 +324,7 @@ def printVersions(symbiotic_dir):
     version = out.strip()
 
     print('=== VERSIONS')
-    print(version+'dense')
+    print(version+'trivial+main')
     sys.stdout.flush()
 
 def get_prp(prp):
@@ -317,10 +334,10 @@ def get_prp(prp):
     return os.path.realpath(prp)
 
 def parse_args():
-    switches = ['timeout=', 'debug', 'no-slice', '32', 'prp=', 'cat=',
+    switches = ['timeout=', 'debug=', 'no-slice', '32', 'prp=', 'cat=',
                 'old-slicer', 'require-slicer', 'klee-params=', 'pta=',
-                'repeat-slicing=', 'no-symexe', 'optimize=', 'no-runexec',
-                'tool=', 'disable-instr-plugins']
+                'repeat-slicing=', 'no-verification', 'optimize=', 'no-runexec',
+                'tool=', 'disable-instr-plugins', 'dont-verify-witness']
     try:
         opts, args = getopt.getopt(sys.argv[1:], '', switches)
     except getopt.GetoptError as e:
@@ -331,7 +348,7 @@ def parse_args():
     for opt, arg in opts:
         if opt == '--debug':
             global debug
-            debug = True
+            debug = arg
         elif opt == '--timeout':
             global timeout
             timeout = int(arg)
@@ -347,9 +364,9 @@ def parse_args():
         elif opt == '--old-slicer':
             global old_slicer
             old_slicer = True
-        elif opt == '--no-symexe':
-            global no_symexe
-            no_symexe = True
+        elif opt == '--no-verification':
+            global no_verification
+            no_verification = True
         elif opt == '--prp':
             prp = arg
         elif opt == '--tool':
@@ -377,18 +394,26 @@ def parse_args():
         elif opt == '--disable-instr-plugins':
             global disable_instr_plugins
             disable_instr_plugins = True
+        elif opt == '--dont-verify-witness':
+            global verify_witness
+            verify_witness = False
 
     return args
 
 class Info(object):
     def __init__(self):
         self.result = None
-        self.totalTime = None
+        self.cpuTime = None
         self.wallTime = None
         self.totalMem = None
         self.returncode = None
         self.slicingTime = None
         self.sliced = (None, None)
+        # optional
+        self.rdTime = None
+        self.ptaTime = None
+
+        self._got_critical = False
 
     def dump(self):
         a, b = self.sliced
@@ -396,23 +421,26 @@ class Info(object):
         "Result: {0}\n"\
         "IR reduced: to {1} from {2}\n"\
         "Slicing time: {3}\n"\
-        "Total time: {4}\n"\
+        "Cpu time: {4}\n"\
         "Wall  time: {5}\n"\
         "Total memory: {6}\n"\
         "Return code: {7}\n"\
+        "(RD time: {8})\n"\
+        "(PTA  time: {9})\n"\
         .format(self.result, b, a,
-                self.slicingTime, self.totalTime,
+                self.slicingTime, self.cpuTime,
                 self.wallTime, self.totalMem,
-                self.returncode)
+                self.returncode,
+                self.rdTime, self.ptaTime)
 
         print(fmt)
 
     def dump_oneline(self):
         a, b = self.sliced
         fmt =\
-        "Result/ir_size/sl.time/time/walltime/mem: {0} {1}/{2} {3} {4} {5} {6}"\
+        "Result/ir_size/sl.time/ptatime/rdtime/cputime/walltime/mem: {0} {1}/{2} {3} {4} {5} {6} {7} {8}"\
         .format(self.result, b, a,
-                self.slicingTime, self.totalTime,
+                self.slicingTime, self.ptaTime, self.rdTime, self.cpuTime,
                 self.wallTime, self.totalMem)
 
         print(fmt)
@@ -438,11 +466,19 @@ def parse_outputfile(outputfile, info = None):
                 info.sliced = (a, b)
             elif line.startswith('INFO: Total slicing time:'):
                 info.slicingTime = float(line[26:])
+            elif line.startswith('DBG: INFO: Points-to analysis took '):
+                time = line[35:]
+                splitted = time.split()
+                info.ptaTime =  float(splitted[0]) + float(splitted[2])/1000
+            elif line.startswith('DBG: INFO: Reaching defs analysis took '):
+                time = line[39:]
+                splitted = time.split()
+                info.rdTime =  float(splitted[0]) + float(splitted[2])/1000
 
         # this one we take from the runexec if available
         if not runexec:
             if line.startswith('INFO: Total time elapsed:'):
-                     info.totalTime = info.wallTime = float(line[26:])
+                info.wallTime = float(line[26:])
 
         return info
 
@@ -467,11 +503,13 @@ def parse_output(output, info = None):
         elif line.startswith('walltime='):
             info.wallTime = float(line[9:-1])
         elif line.startswith('cputime='):
-            info.totalTime = float(line[8:-1])
+            info.cpuTime = float(line[8:-1])
         elif line.startswith('memory='):
             info.totalMem = int(line[7:])
         elif line.startswith('terminationreason=cputime'):
             info.result = 'TIMEOUT'
+        elif 'CRITICAL' in line:
+            info._got_critical = True
 
     return info
 
@@ -488,24 +526,29 @@ def run_symbiotic(src, tool_name = 'klee'):
     if p.returncode == 0:
         info = parse_output(output)
         is_timeout = info.result == 'TIMEOUT'
-        if info.returncode == 0:
-            info = parse_outputfile(outputfile, info)
-            if is_timeout:
-                info.result = 'TIMEOUT'
-        elif not is_timeout:
-            info.result = 'ERROR'
+        info = parse_outputfile(outputfile, info)
+        if is_timeout:
+            info.result = 'TIMEOUT'
+        #if info.returncode != 0:
+        #    info.result = 'ERROR'
 
+        if info._got_critical:
+            print(output)
         print_file(outputfile)
         # let the result be None only when benchexec fails
         # (so that the benchmark gets a new try)
-        if info.result is None:
+        if no_verification and not is_timeout:
+            info.result = 'UNKNOWN'
+        elif info.result is None:
             info.result = 'ERROR'
     else:
         print(output)
         print(err)
+        if os.path.isfile(outputfile):
+            print_file(outputfile)
         print('Running benchexec failed')
 
-    return info, outputfile
+    return info
 
 def sigpipe_handler(signum, data):
     global running_processes
@@ -527,7 +570,7 @@ def get_benchmark(bench):
     return retname
 
 def run_on_tool(src, tool):
-    info, outputfile = run_symbiotic(src, tool)
+    info = run_symbiotic(src, tool)
     if info is None:
         no_info = Info()
         no_info.result = 'ERROR'
@@ -572,7 +615,7 @@ def download_prp(arg):
         prp = get_prp("PropertyMemSafety.prp")
     elif 'Termination' in arg:
         prp = get_prp("PropertyTermination.prp")
-    elif 'DefBehavior' in arg:
+    elif 'DefinedBehavior' in arg:
         prp = get_prp("PropertyDefBehavior.prp")
     else:
         print('UNKNOWN_PROPERTY')
@@ -639,7 +682,7 @@ if __name__ == "__main__":
     print('=== TIME CONSUMED')
     print(total_time)
 
-    if info.result == 'FALSE':
+    if verify_witness and info.result == 'FALSE':
         witness = '{0}.graphml'.format(os.path.abspath(src))
         verify_error_path(src, witness, prp, symbiotic_dir)
 
