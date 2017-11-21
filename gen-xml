@@ -1,0 +1,139 @@
+#!/usr/bin/env python
+#
+# (c)oded 2015, Marek Chalupa
+# E-mail: statica@fi.muni.cz
+#
+# Permission to use, copy, modify, distribute, and sell this software and its
+# documentation for any purpose is hereby granted without fee, provided that
+# the above copyright notice appear in all copies and that both that copyright
+# notice and this permission notice appear in supporting documentation, and
+# that the name of the copyright holders not be used in advertising or
+# publicity pertaining to distribution of the software without specific,
+# written prior permission. The copyright holders make no representations
+# about the suitability of this software for any purpose. It is provided "as
+# is" without express or implied warranty.
+#
+# THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+# INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+# EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+# CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+# DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+# TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
+# OF THIS SOFTWARE.
+#
+# On arran we have only python2, so use python2
+
+import os
+import sys
+from database import get_db_credentials, check_db_credentials, DatabaseConnection
+
+no_lxml = False
+try:
+    from lxml import etree as ET
+except ImportError:
+    no_lxml = True
+
+if no_lxml:
+    # if this fails, then we're screwed, so let the script die
+    from xml.etree import ElementTree as ET
+
+def print_result(res):
+    for r in res:
+        sys.stdout.write('||')
+        for it in r:
+            sys.stdout.write(' {0} |'.format(it))
+        sys.stdout.write('|\n')
+
+def quote(s):
+    if s[0] == '\'' and s[-1] == '\'':
+        return s
+    else:
+        return '\'{0}\''.format(s)
+
+class Result(object):
+    def __init__(self, task, status, classification, cputime, memusage):
+        self.task = task
+        self.status = status
+        self.classification = classification
+        self.cputime = cputime
+        self.memusage = memusage
+
+if __name__ == "__main__":
+    argc = len(sys.argv)
+
+    if argc > 2:
+        sys.stderr.write('0 or 1 argument excepted (mysql query)\n')
+        sys.exit(1)
+
+    db = DatabaseConnection()
+
+    # if we got query given on command line, process it and exit
+    if argc != 2:
+        sys.exit(1)
+
+    tool_id = int(sys.argv[1])
+    q = """
+        SELECT categories.name, tasks.name, result, witness,
+               is_correct, cpu_time, memory_usage
+          FROM task_results
+            JOIN tasks ON tasks.id = task_results.task_id
+            JOIN categories ON tasks.category_id = categories.id
+          WHERE tool_id='{0}'
+        """.format(tool_id)
+
+    res = db.query(q)
+    assert res
+
+    def get_status(s, w):
+        if s == 'false':
+            return s + ' (' + w + ')'
+        return s
+
+    def get_classif(x, status):
+        if x == 1:
+            return 'correct'
+        elif status.startswith('false') or status.startswith('true'):
+            return 'incorrect'
+        elif status.startswith('unknown'):
+            return 'unknown'
+        elif status.startswith('timeout'):
+            return 'timeout'
+
+        return 'error'
+
+    mapping = {}
+    for r in res:
+        mapping.setdefault(r[0], []).append(\
+                    Result(r[1], get_status(r[2], r[3]), r[4], r[5], r[6]))
+
+    # get also the rest of needed information
+    q = """
+        SELECT note, version FROM tools WHERE id='{0}'
+        """.format(tool_id)
+    res = db.query(q)
+    assert len(res) == 1 and len(res[0]) == 2
+    note = res[0][0]
+    version = res[0][1]
+    print('Generating result for')
+    print(version)
+
+    for (category, results) in mapping.items():
+        root = ET.Element('result', block=category, version=version)
+
+        for r in results:
+            t = ET.SubElement(root, 'run', name=r.task)
+            ET.SubElement(t, 'column', title='status', value=r.status)
+            ET.SubElement(t, 'column', title='category',
+                          value=get_classif(r.classification, r.status))
+            ET.SubElement(t, 'column', title='cputime', value=str(r.cputime))
+            ET.SubElement(t, 'column', title='memusage', value=str(r.memusage))
+
+        et = ET.ElementTree(root)
+        to = 'db_dump_' + category + '.xml'
+        if no_lxml:
+            et.write(to, encoding='UTF-8')
+                     #method="xml", xml_declaration = True)
+        else:
+            et.write(to , encoding='UTF-8',
+                     method="xml", xml_declaration = True, pretty_print = True)
+
